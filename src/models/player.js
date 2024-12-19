@@ -47,7 +47,7 @@ const playerSchema = new mongoose.Schema({
     PlusMinus: { type: Number },
     DoubleDoubles: { type: Number },
     TripleDoubles: { type: Number }
-});
+},{timestamps: true});
 
 const Player = mongoose.model('Player', playerSchema);
 
