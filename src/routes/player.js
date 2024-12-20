@@ -148,6 +148,7 @@ router.post('/player_average_data', async (req, res) => {
   try {
     //store latest data in DB
     const today = new Date();
+    today.setDate(today.getDate() - 1);
     const todayDateString = today.toISOString().split('T')[0];
 
     //finding if today's data is present
@@ -179,7 +180,7 @@ router.post('/player_average_data', async (req, res) => {
     const year = date.getFullYear();
     const formattedDate = `${year}-${monthNumberToAbbr(
       date.getMonth(),
-    )}-${String(date.getDate()).padStart(2, '0')}`;
+    )}-${String(date.getDate()-1).padStart(2, '0')}`;
     const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
     const response = await axios.get(url4);
     const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameStatsByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
