@@ -148,6 +148,7 @@ router.post('/player_average_data', async (req, res) => {
   try {
     //store latest data in DB
     const today = new Date();
+    const year = today.getFullYear();
     today.setDate(today.getDate() - 1);
     const todayDateString = today.toISOString().split('T')[0];
 
@@ -166,6 +167,21 @@ router.post('/player_average_data', async (req, res) => {
       await Player.deleteMany({});
       const data = await Player.create(stats);
       await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // delete 2024 current data
+      await Current.deleteMany({ Season: year });
+      const current_url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+      const current_response = await axios.get(current_url);
+      if (current_response.status !== 200) {
+        throw new Error(
+          `HTTP error! status: ${current_response.status}`,
+        );
+      }
+      // update 2024 current data
+      current_response.data.forEach(async (data, i) => {
+        await Current.create(data);
+      });
+
       if(data){
           console.log("latest record added")
       }
@@ -177,7 +193,6 @@ router.post('/player_average_data', async (req, res) => {
     }
 
     const date = new Date();
-    const year = date.getFullYear();
     const formattedDate = `${year}-${monthNumberToAbbr(
       date.getMonth(),
     )}-${String(date.getDate()-1).padStart(2, '0')}`;
