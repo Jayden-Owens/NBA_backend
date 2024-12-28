@@ -6,6 +6,8 @@ import Player from '../models/player';
 import Current from '../models/current';
 import lastData from './lastSeasonStat.json';
 import { STATES } from 'mongoose';
+import { isAuthenticatedUser } from '../middlewares/auth';
+import { checkTrialExpiration } from '../middlewares/trial';
 
 const router = Router();
 
@@ -144,8 +146,11 @@ const calculatePaceAdjustedProjection = (player, teamStats) => {
   return paceAdjustedFantasyPoints.toFixed(3);
 };
 
-router.post('/player_average_data', async (req, res) => {
+router.post('/player_average_data', isAuthenticatedUser, checkTrialExpiration, async (req, res) => {
   try {
+    //trial check
+    const remainingTrialDays = res.locals.remainingTrialDays;
+
     const date = new Date();
     const year = date.getFullYear();
     const formattedDate = `${year}-${monthNumberToAbbr(
@@ -348,7 +353,7 @@ router.post('/player_average_data', async (req, res) => {
       player.PaceAdjustedProtection = paceAdjustedProjection;
       players.push(player);
     }
-    return res.send({ state: players, paceData: '' });
+    return res.send({ success: true, state: players, paceData: '', remainingTrialDays });
   } catch (error) {
     console.error(error);
     return res.send({ state: error.message });
@@ -384,7 +389,7 @@ router.post('/pace', async (req, res) => {
   }
 });
 
-router.post('/today_update', async (req, res) => {
+router.post('/today_update', isAuthenticatedUser, checkTrialExpiration, async (req, res) => {
   try {
     const currentDate = new Date();
     currentDate.setDate(currentDate.getDate() - 1);
