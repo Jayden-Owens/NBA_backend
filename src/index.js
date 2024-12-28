@@ -24,6 +24,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use('/player', routes.player);
 app.use('/subscription', routes.subscription);
+app.use('/user', routes.user);
 
 connectDb().then(async () => {
   app.listen(process.env.PORT, '0.0.0.0',  () =>

@@ -1,6 +1,7 @@
 import express, { Router } from 'express';
 import chargebee from 'chargebee';
 import Stripe from 'stripe';
+import { isAuthenticatedUser } from '../middlewares/auth';
 
 const router = Router();
 
@@ -8,35 +9,33 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2023-08-16',
 });
 
-router.post('/api/signup', async (req, res) => {
+router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
   try {
-    const { email, first_name, last_name } = req.body;
-    console.log(req.body)
+    const {email, name} = req.body;
     const customer = await stripe.customers.create({
       email: email,
-      name: `${first_name} ${last_name}`,
+      name: name,
     });
 
     const result = await chargebee.customer
       .create({
         email: email,
-        first_name: first_name,
-        last_name: last_name,
+        name: name,
         company: "Webrange Solutions",
       })
       .request();
 
     if (customer && result) {
-      return res.status(200).json({ success: true, stripe_id: customer, chargebee_id: result.customer.id, customer_info: {email, first_name, last_name} });
+      return res.status(200).json({ success: true, stripe_id: customer, chargebee_id: result.customer.id, customer_info: {email, name} });
     }
     return res.status(400).json({ success: false });
   } catch (error) {
-    console.log(error);
+    console.log("signup error:", error);
     return res.status(500).json({ success: false, message: error });
   }
 });
 
-router.post('/api/subscription', async (req, res) => {
+router.post('/api/subscription', isAuthenticatedUser, async (req, res) => {
   const { plan_id, customer, paymentMethodId, amount } = req.body;
 
   try {
@@ -76,6 +75,17 @@ router.post('/api/subscription', async (req, res) => {
         },
       })
       .request();
+
+      const user = await User.findById(req.user.id);
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      user.trialStartDate = new Date();
+      user.trialExpired = false;
+  
+      await user.save();
 
     return res
       .status(200)
