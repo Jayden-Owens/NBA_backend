@@ -15,7 +15,7 @@ export const checkTrialExpiration = async (req, res, next) => {
     trialEndDate.setDate(trialEndDate.getDate() + 7);
 
     const remainingTime = trialEndDate - now;
-    const remainingDays = Math.max(Math.floor(remainingTime / (1000 * 3600 * 24)), 0);
+    const remainingDays = Math.max(Math.ceil(remainingTime / (1000 * 3600 * 24)), 0);
 
     res.locals.remainingTrialDays = remainingDays;
 
