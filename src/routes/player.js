@@ -325,6 +325,7 @@ router.post('/player_average_data', isAuthenticatedUser, checkTrialExpiration, a
       } else if(data.HomeOrAway == "AWAY") {
           ProjectedFantasyPoints = ((AvgFPPM + AvgFPPMAway + AvgFPPMLast5 + AvgFPPMOpponent + SDProjectedFPPM) / count_number) * ProjectedMinutes;
       }
+
       const player = {
         ID: ++ID,
         Name: data.Name,
@@ -346,10 +347,14 @@ router.post('/player_average_data', isAuthenticatedUser, checkTrialExpiration, a
         OpponentID: data.OpponentID,
         PlayerID: data.PlayerID,
       };
+
       const paceAdjustedProjection = calculatePaceAdjustedProjection(
         player,
         teamStats.data,
       );
+
+      player.FantasyValue = parseFloat((paceAdjustedProjection / DKSalary)*1000).toFixed(3),
+
       player.PaceAdjustedProtection = paceAdjustedProjection;
       players.push(player);
     }
