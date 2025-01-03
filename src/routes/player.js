@@ -35,6 +35,7 @@ const fetchPlayerGameStats = async (date) => {
     const formattedDate = `${year}-${monthNumberToAbbr(
       date.getMonth(),
     )}-${String(date.getDate()).padStart(2, '0')}`;
+    console.log(formattedDate);
     const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameStatsByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
     const response = await axios.get(url);
 
@@ -79,7 +80,7 @@ router.post('/current_year_players', async (req, res) => {
   try {
     const date = new Date();
     const year = date.getFullYear();
-    const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+    const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year-1}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
     const response = await axios.get(url);
     if (response.status !== 200) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -155,13 +156,12 @@ router.post('/player_average_data', isAuthenticatedUser, checkTrialExpiration, a
     const year = date.getFullYear();
     const formattedDate = `${year}-${monthNumberToAbbr(
       date.getMonth(),
-    )}-${String(date.getDate()).padStart(2, '0')}`;
+    )}-${String(date.getDate()-1).padStart(2, '0')}`;
     const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
     const response = await axios.get(url4);
     const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
     const response5 = await axios.get(url5);
-
-    const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${year}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+    const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${year-1}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
     const teamStats = await axios.get(url6);
 
     if (response.status !== 200 || response5.status !== 200) {
@@ -397,7 +397,7 @@ router.post('/pace', async (req, res) => {
 router.post('/today_update', isAuthenticatedUser, checkTrialExpiration, async (req, res) => {
   try {
     const currentDate = new Date();
-    currentDate.setDate(currentDate.getDate() - 1);
+    currentDate.setDate(currentDate.getDate()-1);
     const year = currentDate.getFullYear();
     const beforeDate = new Date(
       `${currentDate.getFullYear()}-${
@@ -417,7 +417,7 @@ router.post('/today_update', isAuthenticatedUser, checkTrialExpiration, async (r
 
         // delete 2024 current data
         await Current.deleteMany({ Season: year });
-        const current_url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+        const current_url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year-1}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
         const current_response = await axios.get(current_url);
         if (current_response.status !== 200) {
           throw new Error(
