@@ -3,6 +3,7 @@ import axios from 'axios';
 
 import Last from '../models/last';
 import Player from '../models/player';
+import LatestStatsDate from "../models/StatsDate"
 import Current from '../models/current';
 import lastData from './lastSeasonStat.json';
 import { STATES } from 'mongoose';
@@ -35,7 +36,6 @@ const fetchPlayerGameStats = async (date) => {
     const formattedDate = `${year}-${monthNumberToAbbr(
       date.getMonth(),
     )}-${String(date.getDate()).padStart(2, '0')}`;
-    console.log(formattedDate);
     const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameStatsByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
     const response = await axios.get(url);
 
@@ -80,7 +80,9 @@ router.post('/current_year_players', async (req, res) => {
   try {
     const date = new Date();
     const year = date.getFullYear();
-    const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year-1}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+    const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${
+      year - 1
+    }?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
     const response = await axios.get(url);
     if (response.status !== 200) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -147,223 +149,264 @@ const calculatePaceAdjustedProjection = (player, teamStats) => {
   return paceAdjustedFantasyPoints.toFixed(3);
 };
 
-router.post('/player_average_data', isAuthenticatedUser, checkTrialExpiration, async (req, res) => {
-  try {
-    //trial check
-    const remainingTrialDays = res.locals.remainingTrialDays;
+router.post(
+  '/player_average_data',
+  isAuthenticatedUser,
+  checkTrialExpiration,
+  async (req, res) => {
+    try {
+      //trial check
+      const remainingTrialDays = res.locals.remainingTrialDays;
 
-    const date = new Date();
-    const year = date.getFullYear();
-    const formattedDate = `${year}-${monthNumberToAbbr(
-      date.getMonth(),
-    )}-${String(date.getDate()-1).padStart(2, '0')}`;
-    const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
-    const response = await axios.get(url4);
-    const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
-    const response5 = await axios.get(url5);
-    const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${year-1}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
-    const teamStats = await axios.get(url6);
+      const date = new Date();
+      const year = date.getFullYear();
+      const formattedDate = `${year}-${monthNumberToAbbr(
+        date.getMonth(),
+      )}-${String(date.getDate()).padStart(2, '0')}`;
+      const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
 
-    if (response.status !== 200 || response5.status !== 200) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    let players = [];
-    let ID = 0;
-    for (let i = 0; i < response.data.length; i++) {
-      let data = response.data[i];
-      let DKSalary = 0;
-      response5.data.find((slate) =>
-        slate.DfsSlatePlayers.find((player) => {
-          if (player.PlayerID == data.PlayerID) {
-            DKSalary = player.OperatorSalary;
-            return true;
-          }
-          return false;
-        }),
-      );
-      let Position = 'NaN';
-      response5.data.find((slate) =>
-        slate.DfsSlatePlayers.find((player) => {
-          if (player.PlayerID == data.PlayerID) {
-            Position = player.OperatorPosition;
-            return true;
-          }
-          return false;
-        }),
-      );
-      let home_sum = await Player.aggregate([
-        { $match: { PlayerID: data.PlayerID, HomeOrAway: 'HOME' } },
-        {
-          $group: {
-            _id: null,
-            FantasyPoints: { $sum: '$FantasyPoints' },
-            Minutes: { $sum: '$Minutes' },
-            Seconds: { $sum: '$Seconds' },
-          },
-        },
+      //scheduled match for tonight with players
+      const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+
+      const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${
+        year - 1
+      }?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+
+      const [response, response5, teamStats] = await Promise.all([
+        axios.get(url4),
+        axios.get(url5),
+        axios.get(url6),
       ]);
-      let AvgFPPMHome = 0;
-      if (home_sum[0] != undefined) {
-        AvgFPPMHome =
-          home_sum[0].FantasyPoints /
-          (home_sum[0].Minutes + home_sum[0].Seconds / 60);
+
+      if (response.status !== 200 || response5.status !== 200) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      // Avg FPPM(AWAY)
-      let away_sum = await Player.aggregate([
-        { $match: { PlayerID: data.PlayerID, HomeOrAway: 'AWAY' } },
-        {
-          $group: {
-            _id: null,
-            FantasyPoints: { $sum: '$FantasyPoints' },
-            Minutes: { $sum: '$Minutes' },
-            Seconds: { $sum: '$Seconds' },
+      let players = [];
+      let ID = 0;
+
+      for (let i = 0; i < response.data.length; i++) {
+        let data = response.data[i];
+        let DKSalary = 0;
+        response5.data.find((slate) =>
+          slate.DfsSlatePlayers.find((player) => {
+            if (player.PlayerID == data.PlayerID) {
+              DKSalary = player.OperatorSalary;
+              return true;
+            }
+            return false;
+          }),
+        );
+        let Position = 'NaN';
+        response5.data.find((slate) =>
+          slate.DfsSlatePlayers.find((player) => {
+            if (player.PlayerID == data.PlayerID) {
+              Position = player.OperatorPosition;
+              return true;
+            }
+            return false;
+          }),
+        );
+        let home_sum = await Player.aggregate([
+          {
+            $match: {
+              PlayerID: data.PlayerID,
+              HomeOrAway: 'HOME',
+            },
           },
-        },
-      ]);
-      let AvgFPPMAway = 0;
-      if (away_sum[0] != undefined) {
-        AvgFPPMAway =
-          away_sum[0].FantasyPoints /
-          (away_sum[0].Minutes + away_sum[0].Seconds / 60);
-      }
-      // Avg FPPM
-      let AvgFPPM = 0;
-      if (home_sum[0] != undefined && away_sum[0] != undefined) {
-        AvgFPPM =
-          (home_sum[0].FantasyPoints + away_sum[0].FantasyPoints) /
-          (home_sum[0].Minutes +
-            home_sum[0].Seconds / 60 +
-            away_sum[0].Minutes +
-            away_sum[0].Seconds / 60);
-      } else {
+          {
+            $group: {
+              _id: null,
+              FantasyPoints: { $sum: '$FantasyPoints' },
+              Minutes: { $sum: '$Minutes' },
+              Seconds: { $sum: '$Seconds' },
+            },
+          },
+        ]);
+        let AvgFPPMHome = 0;
         if (home_sum[0] != undefined) {
-          AvgFPPM = AvgFPPMHome;
-        } else if (away_sum[0] != undefined) {
-          AvgFPPM = AvgFPPMAway;
+          AvgFPPMHome =
+            home_sum[0].FantasyPoints /
+            (home_sum[0].Minutes + home_sum[0].Seconds / 60);
         }
-      }
-      // Avg FPPM(AVG FPPM Last5)
-      let last5_sum = await Current.aggregate([
-        { $match: { PlayerID: data.PlayerID } },
-        { $sort: { date: -1 } },
-        { $limit: 5 },
-        {
-          $group: {
-            _id: null,
-            FantasyPoints: { $sum: '$FantasyPoints' },
-            Minutes: { $sum: '$Minutes' },
-            Seconds: { $sum: '$Seconds' },
+        // Avg FPPM(AWAY)
+        let away_sum = await Player.aggregate([
+          { $match: { PlayerID: data.PlayerID, HomeOrAway: 'AWAY' } },
+          {
+            $group: {
+              _id: null,
+              FantasyPoints: { $sum: '$FantasyPoints' },
+              Minutes: { $sum: '$Minutes' },
+              Seconds: { $sum: '$Seconds' },
+            },
           },
-        },
-      ]);
-      let AvgFPPMLast5 = 0;
-      if (last5_sum[0] != undefined) {
-        AvgFPPMLast5 =
-          last5_sum[0].FantasyPoints /
-          (last5_sum[0].Minutes + last5_sum[0].Seconds / 60);
-      }
-      // Avg FPPM(Oppopnent)
-      let opponent_sum = await Player.aggregate([
-        {
-          $match: {
-            PlayerID: data.PlayerID,
-            OpponentID: data.OpponentID,
+        ]);
+        let AvgFPPMAway = 0;
+        if (away_sum[0] != undefined) {
+          AvgFPPMAway =
+            away_sum[0].FantasyPoints /
+            (away_sum[0].Minutes + away_sum[0].Seconds / 60);
+        }
+        // Avg FPPM
+        let AvgFPPM = 0;
+        if (home_sum[0] != undefined && away_sum[0] != undefined) {
+          AvgFPPM =
+            (home_sum[0].FantasyPoints + away_sum[0].FantasyPoints) /
+            (home_sum[0].Minutes +
+              home_sum[0].Seconds / 60 +
+              away_sum[0].Minutes +
+              away_sum[0].Seconds / 60);
+        } else {
+          if (home_sum[0] != undefined) {
+            AvgFPPM = AvgFPPMHome;
+          } else if (away_sum[0] != undefined) {
+            AvgFPPM = AvgFPPMAway;
+          }
+        }
+        // Avg FPPM(AVG FPPM Last5)
+        let last5_sum = await Player.aggregate([
+          { $match: { PlayerID: data.PlayerID } },
+          { $sort: { date: -1 } },
+          { $limit: 5 },
+          {
+            $group: {
+              _id: null,
+              FantasyPoints: { $sum: '$FantasyPoints' },
+              Minutes: { $sum: '$Minutes' },
+              Seconds: { $sum: '$Seconds' },
+            },
           },
-        },
-        {
-          $group: {
-            _id: null,
-            FantasyPoints: { $sum: '$FantasyPoints' },
-            Minutes: { $sum: '$Minutes' },
-            Seconds: { $sum: '$Seconds' },
+        ]);
+        let AvgFPPMLast5 = 0;
+        if (last5_sum[0] != undefined) {
+          AvgFPPMLast5 =
+            last5_sum[0].FantasyPoints /
+            (last5_sum[0].Minutes + last5_sum[0].Seconds / 60);
+        }
+        // Avg FPPM(Oppopnent)
+        let opponent_sum = await Player.aggregate([
+          {
+            $match: {
+              PlayerID: data.PlayerID,
+              OpponentID: data.OpponentID,
+            },
           },
-        },
-      ]);
-      let AvgFPPMOpponent = 0;
-      if (opponent_sum[0] != undefined) {
-        AvgFPPMOpponent =
-          opponent_sum[0].FantasyPoints /
-          (opponent_sum[0].Minutes + opponent_sum[0].Seconds / 60);
-      }
-      // SDProjectedFPPM
-      let SDProjectedFPPM =
-        data.FantasyPoints / (data.Minutes + data.Seconds / 60);
-      // ProjectedMinutes
-      let ProjectedMinutes = data.Minutes + data.Seconds / 60;
-      // ProjectedFantasyPoints
-      let count_number = 5;
-      if (AvgFPPM === 0 || isNaN(AvgFPPM)) {
-        count_number = count_number - 1;
-        AvgFPPM = 0;
-      }
-      if (AvgFPPMHome === 0 || isNaN(AvgFPPMHome)) {
-        count_number = count_number - 1;
-        AvgFPPMHome = 0;
-      }
-      if (AvgFPPMAway === 0 || isNaN(AvgFPPMAway)) {
-        count_number = count_number - 1;
-        AvgFPPMAway = 0;
-      }
-      if (AvgFPPMLast5 === 0 || isNaN(AvgFPPMLast5)) {
-        count_number = count_number - 1;
-        AvgFPPMLast5 = 0;
-      }
-      if (AvgFPPMOpponent === 0 || isNaN(AvgFPPMOpponent)) {
-        count_number = count_number - 1;
-        AvgFPPMOpponent = 0;
-      }
-      if (SDProjectedFPPM === 0 || isNaN(SDProjectedFPPM)) {
-        count_number = count_number - 1;
-        SDProjectedFPPM = 0;
-      }
-      if (count_number === 0 || count_number === -1) {
-        count_number = 1;
-      }
-      let ProjectedFantasyPoints = 0;
-      if (data.HomeOrAway == "HOME") {
-          ProjectedFantasyPoints = ((AvgFPPM + AvgFPPMHome + AvgFPPMLast5 + AvgFPPMOpponent + SDProjectedFPPM) / count_number) * ProjectedMinutes;
-      } else if(data.HomeOrAway == "AWAY") {
-          ProjectedFantasyPoints = ((AvgFPPM + AvgFPPMAway + AvgFPPMLast5 + AvgFPPMOpponent + SDProjectedFPPM) / count_number) * ProjectedMinutes;
-      }
+          {
+            $group: {
+              _id: null,
+              FantasyPoints: { $sum: '$FantasyPoints' },
+              Minutes: { $sum: '$Minutes' },
+              Seconds: { $sum: '$Seconds' },
+            },
+          },
+        ]);
+        let AvgFPPMOpponent = 0;
+        if (opponent_sum[0] != undefined) {
+          AvgFPPMOpponent =
+            opponent_sum[0].FantasyPoints /
+            (opponent_sum[0].Minutes + opponent_sum[0].Seconds / 60);
+        }
+        // SDProjectedFPPM
+        let SDProjectedFPPM =
+          data.FantasyPoints / (data.Minutes + data.Seconds / 60);
+        // ProjectedMinutes
+        let ProjectedMinutes = data.Minutes + data.Seconds / 60;
+        // ProjectedFantasyPoints
+        let count_number = 5;
+        if (AvgFPPM === 0 || isNaN(AvgFPPM)) {
+          count_number = count_number - 1;
+          AvgFPPM = 0;
+        }
+        if (AvgFPPMHome === 0 || isNaN(AvgFPPMHome)) {
+          count_number = count_number - 1;
+          AvgFPPMHome = 0;
+        }
+        if (AvgFPPMAway === 0 || isNaN(AvgFPPMAway)) {
+          count_number = count_number - 1;
+          AvgFPPMAway = 0;
+        }
+        if (AvgFPPMLast5 === 0 || isNaN(AvgFPPMLast5)) {
+          count_number = count_number - 1;
+          AvgFPPMLast5 = 0;
+        }
+        if (AvgFPPMOpponent === 0 || isNaN(AvgFPPMOpponent)) {
+          count_number = count_number - 1;
+          AvgFPPMOpponent = 0;
+        }
+        if (SDProjectedFPPM === 0 || isNaN(SDProjectedFPPM)) {
+          count_number = count_number - 1;
+          SDProjectedFPPM = 0;
+        }
+        if (count_number === 0 || count_number === -1) {
+          count_number = 1;
+        }
+        let ProjectedFantasyPoints = 0;
+        if (data.HomeOrAway == 'HOME') {
+          ProjectedFantasyPoints =
+            ((AvgFPPM +
+              AvgFPPMHome +
+              AvgFPPMLast5 +
+              AvgFPPMOpponent +
+              SDProjectedFPPM) /
+              count_number) *
+            ProjectedMinutes;
+        } else if (data.HomeOrAway == 'AWAY') {
+          ProjectedFantasyPoints =
+            ((AvgFPPM +
+              AvgFPPMAway +
+              AvgFPPMLast5 +
+              AvgFPPMOpponent +
+              SDProjectedFPPM) /
+              count_number) *
+            ProjectedMinutes;
+        }
 
-      const player = {
-        ID: ++ID,
-        Name: data.Name,
-        Position: Position,
-        Team: data.Team,
-        Opponent: data.Opponent,
-        ProjectedMinutes: parseFloat(ProjectedMinutes).toFixed(3),
-        ProjectedFantasyPoints: parseFloat(ProjectedFantasyPoints).toFixed(3),
-        DKSalary: DKSalary,
-        HomeOrAway: data.HomeOrAway,
-        AvgFPPM: parseFloat(AvgFPPM).toFixed(3),
-        AvgFPPMHome: parseFloat(AvgFPPMHome).toFixed(3),
-        AvgFPPMAway: parseFloat(AvgFPPMAway).toFixed(3),
-        AvgFPPMLast5: parseFloat(AvgFPPMLast5).toFixed(3),
-        AvgFPPMOpponent: parseFloat(AvgFPPMOpponent).toFixed(3),
-        SDProjectedFPPM: parseFloat(SDProjectedFPPM).toFixed(3),
-        FantasyValue: parseFloat((ProjectedFantasyPoints / DKSalary)*1000).toFixed(3),
-        TeamID: data.TeamID,
-        OpponentID: data.OpponentID,
-        PlayerID: data.PlayerID,
-      };
+        const player = {
+          ID: ++ID,
+          Name: data.Name,
+          Position: Position,
+          Team: data.Team,
+          Opponent: data.Opponent,
+          ProjectedMinutes: parseFloat(ProjectedMinutes).toFixed(3),
+          ProjectedFantasyPoints: parseFloat(
+            ProjectedFantasyPoints,
+          ).toFixed(3),
+          DKSalary: DKSalary,
+          HomeOrAway: data.HomeOrAway,
+          AvgFPPM: parseFloat(AvgFPPM).toFixed(3),
+          AvgFPPMHome: parseFloat(AvgFPPMHome).toFixed(3),
+          AvgFPPMAway: parseFloat(AvgFPPMAway).toFixed(3),
+          AvgFPPMLast5: parseFloat(AvgFPPMLast5).toFixed(3),
+          AvgFPPMOpponent: parseFloat(AvgFPPMOpponent).toFixed(3),
+          SDProjectedFPPM: parseFloat(SDProjectedFPPM).toFixed(3),
+          FantasyValue: parseFloat(
+            (ProjectedFantasyPoints / DKSalary) * 1000,
+          ).toFixed(3),
+          TeamID: data.TeamID,
+          OpponentID: data.OpponentID,
+          PlayerID: data.PlayerID,
+        };
 
-      const paceAdjustedProjection = calculatePaceAdjustedProjection(
-        player,
-        teamStats.data,
-      );
+        const paceAdjustedProjection =
+          calculatePaceAdjustedProjection(player, teamStats.data);
 
-      player.FantasyValue = parseFloat((paceAdjustedProjection / DKSalary)*1000).toFixed(3),
-
-      player.PaceAdjustedProtection = paceAdjustedProjection;
-      players.push(player);
+        (player.FantasyValue = parseFloat(
+          (paceAdjustedProjection / DKSalary) * 1000,
+        ).toFixed(3)),
+          (player.PaceAdjustedProtection = paceAdjustedProjection);
+        players.push(player);
+      }
+      return res.send({
+        success: true,
+        state: players,
+        paceData: '',
+        remainingTrialDays,
+      });
+    } catch (error) {
+      console.error(error);
+      return res.send({ state: error.message });
     }
-    return res.send({ success: true, state: players, paceData: '', remainingTrialDays });
-  } catch (error) {
-    console.error(error);
-    return res.send({ state: error.message });
-  }
-});
+  },
+);
 
 router.post('/pace', async (req, res) => {
   try {
@@ -394,52 +437,83 @@ router.post('/pace', async (req, res) => {
   }
 });
 
-router.post('/today_update', isAuthenticatedUser, checkTrialExpiration, async (req, res) => {
-  try {
-    const currentDate = new Date();
-    currentDate.setDate(currentDate.getDate()-1);
-    const year = currentDate.getFullYear();
-    const beforeDate = new Date(
-      `${currentDate.getFullYear()}-${
-        currentDate.getMonth() + 1
-      }-${currentDate.getDate()}`,
-    );
-    const stats = await fetchPlayerGameStats(beforeDate);
-    let BeforeData = {};
-    if (stats != null && stats.length != 0) {
-      BeforeData = await Player.findOne({ Day: stats[0].Day });
-    }
-    if (BeforeData == null) {
-      if (stats != null && stats.length != 0) {
-        stats.forEach(async (data, i) => {
-          await Player.create(data);
-        });
+router.post(
+  '/today_update',
+  isAuthenticatedUser,
+  checkTrialExpiration,
+  async (req, res) => {
+    try {
+      const currentDate = new Date();
+      const startOfSeason = new Date(currentDate.getFullYear() - 1, 9, 1); // October 1
 
-        // delete 2024 current data
-        await Current.deleteMany({ Season: year });
-        const current_url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year-1}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
-        const current_response = await axios.get(current_url);
-        if (current_response.status !== 200) {
-          throw new Error(
-            `HTTP error! status: ${current_response.status}`,
-          );
-        }
-        // update 2024 current data
-        current_response.data.forEach(async (data, i) => {
-          await Current.create(data);
-        });
-      } else {
-        console.log('No Data!');
+      // Fetch the latest date stored in the database
+      const latestDateRecord = await LatestStatsDate.findOne({}).sort({ Date: -1 });
+      let latestDate = startOfSeason; // Default to the start of the season if no record exists
+
+      if (latestDateRecord) {
+        latestDate = latestDateRecord.Date; // Get the latest date from the database
       }
+
+      console.log("Latest Date in DB:", latestDate);
+
+      // Check if the current date is later than the latest stored date
+      if (currentDate > latestDate) {
+        // Iterate through each date from latestDate + 1 to today
+        for (let date = new Date(latestDate); date <= currentDate; date.setDate(date.getDate() + 1)) {
+          // Check if data for this date already exists in Player model
+          const existingPlayerData = await Player.findOne({
+            Day: date.toISOString().split('T')[0], // Ensure you're using the correct field for the date
+          });
+
+          if (existingPlayerData) {
+            console.log(`Data for ${date.toDateString()} already exists in Player. Skipping.`);
+          } else {
+            // Fetch data for PlayerGameStatsByDate
+            const stats = await fetchPlayerGameStats(date);
+            if (stats && stats.length > 0) {
+              await Player.insertMany(stats); // Save actual game data to Player model
+              console.log(`Data for ${date.toDateString()} saved in Player.`);
+            } else {
+              console.log(`No stats available for ${date.toDateString()}.`);
+            }
+          }
+        }
+
+        // Update LatestStatsDate to reflect the latest processed date (today)
+        const newLatestDate = new LatestStatsDate({ Date: currentDate });
+        await newLatestDate.save(); // Save the latest date as today's date
+        console.log(`Latest date updated to: ${currentDate.toDateString()}`);
+      } else {
+        console.log("No new data to store.");
+      }
+
+      // Fetch current season data for PlayerSeasonStats if not already done
+      const year = currentDate.getFullYear() - 1; // This seems to be a year behind, as per your example
+      const currentSeasonExists = await Current.findOne({ Season: year });
+
+      if (!currentSeasonExists) {
+        console.log(`Fetching season data for ${year}...`);
+        const currentSeasonUrl = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+        const currentSeasonResponse = await axios.get(currentSeasonUrl);
+
+        if (currentSeasonResponse.status !== 200) {
+          throw new Error(`HTTP error! status: ${currentSeasonResponse.status}`);
+        }
+
+        await Current.insertMany(currentSeasonResponse.data);
+        console.log(`Season data for ${year} saved.`);
+      } else {
+        console.log(`Season data for ${year} already exists.`);
+      }
+
+      return res.send({ message: 'Update completed successfully.' });
+    } catch (error) {
+      console.error(`Error updating player game stats:`, error.message);
+      return res.status(500).send({ error: error.message });
     }
-    return res.send({ state: beforeDate });
-  } catch (error) {
-    console.error(
-      `Error fetching player game stats for }:`,
-      error.message,
-    );
-    return res.send({ state: error.message });
   }
-});
+);
+
+
 
 export default router;
