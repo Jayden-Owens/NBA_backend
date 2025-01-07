@@ -22,7 +22,6 @@ router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
       .create({
         email: email,
         name: name,
-        company: "Webrange Solutions",
       })
       .request();
 
