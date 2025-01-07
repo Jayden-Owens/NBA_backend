@@ -62,9 +62,9 @@ router.post("/login", async (req, res) => {
         return res.status(400).json({ success: false, message: "Invalid credentials" });
       }
 
-      if (user.isTrialExpired()) {
-        return res.status(403).json({success: false, message: "Your trial has expired. Please upgrade your plan."});
-      }
+      // if (user.isTrialExpired()) {
+      //   return res.status(403).json({success: false, message: "Your trial has expired. Please upgrade your plan."});
+      // }
     
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
         expiresIn: "1d",
