@@ -2,6 +2,7 @@ import express, { Router } from 'express';
 import chargebee from 'chargebee';
 import Stripe from 'stripe';
 import { isAuthenticatedUser } from '../middlewares/auth';
+import User from "../models/user"
 
 const router = Router();
 

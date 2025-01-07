@@ -14,8 +14,6 @@ export const isAuthenticatedUser = async (req, res, next) => {
 
     const user = await User.findById(decodedToken?.id).select('-password');
 
-    console.log
-
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid Token' });
     }
