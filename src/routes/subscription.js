@@ -83,7 +83,7 @@ router.post('/api/subscription', isAuthenticatedUser, async (req, res) => {
       }
   
       user.trialStartDate = new Date();
-      user.trialExpired = false;
+      user.trialExpired = true;
   
       await user.save();
 
