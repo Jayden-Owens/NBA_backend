@@ -12,28 +12,47 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
   try {
-    const {email, name} = req.body;
-    const customer = await stripe.customers.create({
-      email: email,
-      name: name,
-    });
+    const { email, name } = req.body;
 
-    const result = await chargebee.customer
-      .create({
+    // 👉 1️⃣ Check if customer exists in Stripe
+    let stripeCustomer = await stripe.customers.list({ email });
+    if (stripeCustomer.data.length > 0) {
+      stripeCustomer = stripeCustomer.data[0]; // Use existing customer
+    } else {
+      stripeCustomer = await stripe.customers.create({
         email: email,
         name: name,
-      })
-      .request();
-
-    if (customer && result) {
-      return res.status(200).json({ success: true, stripe_id: customer, chargebee_id: result.customer.id, customer_info: {email, name} });
+      });
     }
-    return res.status(400).json({ success: false });
+
+    // 👉 2️⃣ Check if customer exists in Chargebee
+    let chargebeeCustomerResponse = await chargebee.customer.list({ "email[is]": email }).request();
+    let chargebeeCustomer;
+
+    if (chargebeeCustomerResponse.list.length > 0) {
+      chargebeeCustomer = chargebeeCustomerResponse.list[0].customer;
+    } else {
+      const newChargebeeCustomer = await chargebee.customer.create({
+        email: email,
+        first_name: name,
+      }).request();
+      chargebeeCustomer = newChargebeeCustomer.customer;
+    }
+
+    // 👉 3️⃣ Return response with existing or new customer IDs
+    return res.status(200).json({
+      success: true,
+      stripe_id: stripeCustomer,
+      chargebee_id: chargebeeCustomer.id,
+      customer_info: { email, name }
+    });
+
   } catch (error) {
-    console.log("signup error:", error);
-    return res.status(500).json({ success: false, message: error });
+    console.error("Signup error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
+
 
 router.post('/api/subscription', isAuthenticatedUser, async (req, res) => {
   const { plan_id, customer, paymentMethodId, amount } = req.body;

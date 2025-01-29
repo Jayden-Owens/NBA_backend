@@ -3,6 +3,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/user.js'; 
+import chargebee from 'chargebee';
 
 const router = Router();
 
@@ -48,43 +49,63 @@ router.post("/signup", async (req, res) => {
     }
   });
 
-router.post("/login", async (req, res) => {
+  router.post("/login", async (req, res) => {
     const { email, password } = req.body;
-  
-    try {
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(400).json({ success: false, message: "User not found" });
-      }
-  
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(400).json({ success: false, message: "Invalid credentials" });
-      }
 
-      // if (user.isTrialExpired()) {
-      //   return res.status(403).json({success: false, message: "Your trial has expired. Please upgrade your plan."});
-      // }
-    
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "1d",
-      });
-  
-      res.status(200).json({
-        success: true, message: "Login successful",
-        token,
-        user: {
-          name: user.name,
-          email: user.email,
-          _id: user._id
-        },
-        isTrialExpired: user.isTrialExpired(),
-      });
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ success: false, message: "User not found" });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: "Invalid credentials" });
+        }
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: "1d",
+        });
+
+        // Fetch customer ID from Chargebee
+        const customerResponse = await chargebee.customer
+            .list({ "email[is]": email })
+            .request();
+
+        // Ensure customer exists
+        if (!customerResponse.list.length) {
+            return res.status(404).json({ success: false, message: "Chargebee customer not found" });
+        }
+
+        const customerId = customerResponse.list[0].customer.id;
+
+        // Generate SSO URL
+        const ssoResponse = await chargebee.portal_session.create({
+          customer: {
+            id: customerId,
+            email: email,
+          },
+        }).request();
+
+        return res.status(200).json({
+            success: true,
+            message: "Login successful",
+            token,
+            user: {
+                name: user.name,
+                email: user.email,
+                _id: user._id
+            },
+            portalUrl: ssoResponse.portal_session.access_url,
+            isTrialExpired: user.isTrialExpired(),
+        });
+
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ success: false, message: "Server error" });
+        console.error(err);
+        res.status(500).json({ success: false, message: "Server error" });
     }
-  });
+});
+
 
 
   export default router;
