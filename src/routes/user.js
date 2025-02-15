@@ -113,4 +113,37 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.delete('/delete-account',  async (req, res) => {
+  const userId = req.body.id
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'User not found' });
+    }
+
+    // Delete user from Chargebee
+    const customerResponse = await chargebee.customer
+      .list({ 'email[is]': user.email })
+      .request();
+
+    if (customerResponse.list.length) {
+      const customerId = customerResponse.list[0]?.customer?.id;
+      await chargebee.customer.delete(customerId).request();
+    }
+
+    // Delete user from database
+    await User.findByIdAndDelete(userId);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully',
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 export default router;
