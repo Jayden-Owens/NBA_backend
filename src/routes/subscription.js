@@ -102,7 +102,7 @@ router.post('/api/subscription', isAuthenticatedUser, async (req, res) => {
       }
   
       user.trialStartDate = new Date();
-      user.trialExpired = true;
+      user.trialExpired = false;
   
       await user.save();
 
@@ -112,6 +112,35 @@ router.post('/api/subscription', isAuthenticatedUser, async (req, res) => {
   } catch (error) {
     console.error('Error creating subscription:', error);
     return res.status(500).send('Subscription creation failed.');
+  }
+});
+
+router.post('/api/cancel-subscription', isAuthenticatedUser, async (req, res) => {
+  const { subscriptionId } = req.body;
+
+  try {
+    // Cancel the subscription in Chargebee
+    const result = await chargebee.subscription.cancel(subscriptionId, {
+      end_of_term: true // or use "immediate" to cancel immediately
+    }).request();
+
+    // Optionally, you can also cancel the subscription in Stripe if needed
+    // const stripeSubscriptionId = result.subscription.gw_subscription_id;
+    // await stripe.subscriptions.del(stripeSubscriptionId);
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.trialExpired = true; 
+    await user.save();
+
+    return res.status(200).json({ success: true, message: 'Subscription cancelled successfully' });
+  } catch (error) {
+    console.error('Error cancelling subscription:', error);
+    return res.status(500).send('Subscription cancellation failed.');
   }
 });
 
