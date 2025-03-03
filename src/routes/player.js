@@ -157,93 +157,114 @@ router.post(
     try {
       //trial check
       const remainingTrialDays = res.locals.remainingTrialDays;
-      if(remainingTrialDays <= 0) {
-        return res.send({
-          success: true,
-          message: 'Trial period has expired. Please subscribe to continue using the service.',
-          remainingTrialDays,
-        });
-      }
 
       const date = new Date();
       const year = date.getFullYear();
-      if (date.getHours() >= 22) {
-        date.setDate(date.getDate() + 1);
-      }
-      const formattedDate = `${year}-${monthNumberToAbbr(date.getMonth())}-${String(date.getDate()).padStart(2, '0')}`;
-      const apiKey = '5e7cd68a3a2f42b0ac2aeb9abc091748';
-      
-      const urls = {
-        playerGameProjectionStats: `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=${apiKey}`,
-        dfsSlatesByDate: `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}?key=${apiKey}`,
-        teamSeasonStats: `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${year - 1}?key=${apiKey}`
-      };
-      
+      const formattedDate = `${year}-${monthNumberToAbbr(
+        date.getMonth(),
+      )}-${String(date.getDate()).padStart(2, '0')}`;
+      const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+
+      //scheduled match for tonight with players
+      const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+
+      const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${
+        year - 1
+      }?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+
       const [response, response5, teamStats] = await Promise.all([
-        axios.get(urls.playerGameProjectionStats),
-        axios.get(urls.dfsSlatesByDate),
-        axios.get(urls.teamSeasonStats)
+        axios.get(url4),
+        axios.get(url5),
+        axios.get(url6),
       ]);
-      console.log('response', response.data);
-      
+
+      if (response.status !== 200 || response5.status !== 200) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       let players = [];
       let ID = 0;
-      
-      for (let data of response.data) {
+
+      for (let i = 0; i < response.data.length; i++) {
+        let data = response.data[i];
         let DKSalary = 0;
-        let Position = 'NaN';
-      
-        response5.data.forEach(slate => {
-          slate.DfsSlatePlayers.forEach(player => {
+        response5.data.find((slate) =>
+          slate.DfsSlatePlayers.find((player) => {
             if (player.PlayerID == data.PlayerID) {
               DKSalary = player.OperatorSalary;
-              Position = player.OperatorPosition;
+              return true;
             }
-          });
-        });
-      
-        const home_sum = await getPlayerAggregate(data.PlayerID, 'HOME');
-        const away_sum = await getPlayerAggregate(data.PlayerID, 'AWAY');
-        const last5_sum = await getPlayerLast5Aggregate(data.PlayerID);
-        const opponent_sum = await getPlayerOpponentAggregate(data.PlayerID, data.OpponentID);
-      
-        const AvgFPPMHome = calculateAvgFPPM(home_sum);
-        const AvgFPPMAway = calculateAvgFPPM(away_sum);
-        const AvgFPPMLast5 = calculateAvgFPPM(last5_sum);
-        const AvgFPPMOpponent = calculateAvgFPPM(opponent_sum);
-        const AvgFPPM = calculateOverallAvgFPPM(home_sum, away_sum);
-        const SDProjectedFPPM = data.FantasyPoints / (data.Minutes + data.Seconds / 60);
-        const ProjectedMinutes = data.Minutes + data.Seconds / 60;
-      
-        const count_number = calculateCountNumber([AvgFPPM, AvgFPPMHome, AvgFPPMAway, AvgFPPMLast5, AvgFPPMOpponent, SDProjectedFPPM]);
-        const ProjectedFantasyPoints = calculateProjectedFantasyPoints(data.HomeOrAway, [AvgFPPM, AvgFPPMHome, AvgFPPMAway, AvgFPPMLast5, AvgFPPMOpponent, SDProjectedFPPM], count_number, ProjectedMinutes);
-      
-        const player = createPlayerObject(++ID, data, Position, DKSalary, ProjectedMinutes, ProjectedFantasyPoints, AvgFPPM, AvgFPPMHome, AvgFPPMAway, AvgFPPMLast5, AvgFPPMOpponent, SDProjectedFPPM);
-        const paceAdjustedProjection = calculatePaceAdjustedProjection(player, teamStats.data);
-      
-        player.FantasyValue = parseFloat((paceAdjustedProjection / DKSalary) * 1000).toFixed(3);
-        player.PaceAdjustedProtection = paceAdjustedProjection;
-      
-        players.push(player);
-      }
-      
-      async function getPlayerAggregate(PlayerID, HomeOrAway) {
-        return await Player.aggregate([
-          { $match: { PlayerID, HomeOrAway } },
+            return false;
+          }),
+        );
+        let Position = 'NaN';
+        response5.data.find((slate) =>
+          slate.DfsSlatePlayers.find((player) => {
+            if (player.PlayerID == data.PlayerID) {
+              Position = player.OperatorPosition;
+              return true;
+            }
+            return false;
+          }),
+        );
+        let home_sum = await Player.aggregate([
+          {
+            $match: {
+              PlayerID: data.PlayerID,
+              HomeOrAway: 'HOME',
+            },
+          },
           {
             $group: {
               _id: null,
               FantasyPoints: { $sum: '$FantasyPoints' },
               Minutes: { $sum: '$Minutes' },
-              Seconds: { $sum: '$Seconds' }
-            }
-          }
+              Seconds: { $sum: '$Seconds' },
+            },
+          },
         ]);
-      }
-      
-      async function getPlayerLast5Aggregate(PlayerID) {
-        return await Player.aggregate([
-          { $match: { PlayerID } },
+        let AvgFPPMHome = 0;
+        if (home_sum[0] != undefined) {
+          AvgFPPMHome =
+            home_sum[0].FantasyPoints /
+            (home_sum[0].Minutes + home_sum[0].Seconds / 60);
+        }
+        // Avg FPPM(AWAY)
+        let away_sum = await Player.aggregate([
+          { $match: { PlayerID: data.PlayerID, HomeOrAway: 'AWAY' } },
+          {
+            $group: {
+              _id: null,
+              FantasyPoints: { $sum: '$FantasyPoints' },
+              Minutes: { $sum: '$Minutes' },
+              Seconds: { $sum: '$Seconds' },
+            },
+          },
+        ]);
+        let AvgFPPMAway = 0;
+        if (away_sum[0] != undefined) {
+          AvgFPPMAway =
+            away_sum[0].FantasyPoints /
+            (away_sum[0].Minutes + away_sum[0].Seconds / 60);
+        }
+        // Avg FPPM
+        let AvgFPPM = 0;
+        if (home_sum[0] != undefined && away_sum[0] != undefined) {
+          AvgFPPM =
+            (home_sum[0].FantasyPoints + away_sum[0].FantasyPoints) /
+            (home_sum[0].Minutes +
+              home_sum[0].Seconds / 60 +
+              away_sum[0].Minutes +
+              away_sum[0].Seconds / 60);
+        } else {
+          if (home_sum[0] != undefined) {
+            AvgFPPM = AvgFPPMHome;
+          } else if (away_sum[0] != undefined) {
+            AvgFPPM = AvgFPPMAway;
+          }
+        }
+        // Avg FPPM(AVG FPPM Last5)
+        let last5_sum = await Player.aggregate([
+          { $match: { PlayerID: data.PlayerID } },
           { $sort: { date: -1 } },
           { $limit: 5 },
           {
@@ -251,71 +272,105 @@ router.post(
               _id: null,
               FantasyPoints: { $sum: '$FantasyPoints' },
               Minutes: { $sum: '$Minutes' },
-              Seconds: { $sum: '$Seconds' }
-            }
-          }
+              Seconds: { $sum: '$Seconds' },
+            },
+          },
         ]);
-      }
-      
-      async function getPlayerOpponentAggregate(PlayerID, OpponentID) {
-        return await Player.aggregate([
-          { $match: { PlayerID, OpponentID } },
+        let AvgFPPMLast5 = 0;
+        if (last5_sum[0] != undefined) {
+          AvgFPPMLast5 =
+            last5_sum[0].FantasyPoints /
+            (last5_sum[0].Minutes + last5_sum[0].Seconds / 60);
+        }
+        // Avg FPPM(Oppopnent)
+        let opponent_sum = await Player.aggregate([
+          {
+            $match: {
+              PlayerID: data.PlayerID,
+              OpponentID: data.OpponentID,
+            },
+          },
           {
             $group: {
               _id: null,
               FantasyPoints: { $sum: '$FantasyPoints' },
               Minutes: { $sum: '$Minutes' },
-              Seconds: { $sum: '$Seconds' }
-            }
-          }
+              Seconds: { $sum: '$Seconds' },
+            },
+          },
         ]);
-      }
-      
-      function calculateAvgFPPM(sum) {
-        if (sum[0] != undefined) {
-          return sum[0].FantasyPoints / (sum[0].Minutes + sum[0].Seconds / 60);
+        let AvgFPPMOpponent = 0;
+        if (opponent_sum[0] != undefined) {
+          AvgFPPMOpponent =
+            opponent_sum[0].FantasyPoints /
+            (opponent_sum[0].Minutes + opponent_sum[0].Seconds / 60);
         }
-        return 0;
-      }
-      
-      function calculateOverallAvgFPPM(home_sum, away_sum) {
-        if (home_sum[0] != undefined && away_sum[0] != undefined) {
-          return (home_sum[0].FantasyPoints + away_sum[0].FantasyPoints) / (home_sum[0].Minutes + home_sum[0].Seconds / 60 + away_sum[0].Minutes + away_sum[0].Seconds / 60);
-        } else if (home_sum[0] != undefined) {
-          return calculateAvgFPPM(home_sum);
-        } else if (away_sum[0] != undefined) {
-          return calculateAvgFPPM(away_sum);
+        // SDProjectedFPPM
+        let SDProjectedFPPM =
+          data.FantasyPoints / (data.Minutes + data.Seconds / 60);
+        // ProjectedMinutes
+        let ProjectedMinutes = data.Minutes + data.Seconds / 60;
+        // ProjectedFantasyPoints
+        let count_number = 5;
+        if (AvgFPPM === 0 || isNaN(AvgFPPM)) {
+          count_number = count_number - 1;
+          AvgFPPM = 0;
         }
-        return 0;
-      }
-      
-      function calculateCountNumber(values) {
-        return values.reduce((count, value) => {
-          if (value === 0 || isNaN(value)) {
-            return count - 1;
-          }
-          return count;
-        }, values.length);
-      }
-      
-      function calculateProjectedFantasyPoints(HomeOrAway, values, count_number, ProjectedMinutes) {
+        if (AvgFPPMHome === 0 || isNaN(AvgFPPMHome)) {
+          count_number = count_number - 1;
+          AvgFPPMHome = 0;
+        }
+        if (AvgFPPMAway === 0 || isNaN(AvgFPPMAway)) {
+          count_number = count_number - 1;
+          AvgFPPMAway = 0;
+        }
+        if (AvgFPPMLast5 === 0 || isNaN(AvgFPPMLast5)) {
+          count_number = count_number - 1;
+          AvgFPPMLast5 = 0;
+        }
+        if (AvgFPPMOpponent === 0 || isNaN(AvgFPPMOpponent)) {
+          count_number = count_number - 1;
+          AvgFPPMOpponent = 0;
+        }
+        if (SDProjectedFPPM === 0 || isNaN(SDProjectedFPPM)) {
+          count_number = count_number - 1;
+          SDProjectedFPPM = 0;
+        }
         if (count_number === 0 || count_number === -1) {
           count_number = 1;
         }
-        const sum = values.reduce((acc, value) => acc + value, 0);
-        return (sum / count_number) * ProjectedMinutes;
-      }
-      
-      function createPlayerObject(ID, data, Position, DKSalary, ProjectedMinutes, ProjectedFantasyPoints, AvgFPPM, AvgFPPMHome, AvgFPPMAway, AvgFPPMLast5, AvgFPPMOpponent, SDProjectedFPPM) {
-        return {
-          ID,
+        let ProjectedFantasyPoints = 0;
+        if (data.HomeOrAway == 'HOME') {
+          ProjectedFantasyPoints =
+            ((AvgFPPM +
+              AvgFPPMHome +
+              AvgFPPMLast5 +
+              AvgFPPMOpponent +
+              SDProjectedFPPM) /
+              count_number) *
+            ProjectedMinutes;
+        } else if (data.HomeOrAway == 'AWAY') {
+          ProjectedFantasyPoints =
+            ((AvgFPPM +
+              AvgFPPMAway +
+              AvgFPPMLast5 +
+              AvgFPPMOpponent +
+              SDProjectedFPPM) /
+              count_number) *
+            ProjectedMinutes;
+        }
+
+        const player = {
+          ID: ++ID,
           Name: data.Name,
-          Position,
+          Position: Position,
           Team: data.Team,
           Opponent: data.Opponent,
           ProjectedMinutes: parseFloat(ProjectedMinutes).toFixed(3),
-          ProjectedFantasyPoints: parseFloat(ProjectedFantasyPoints).toFixed(3),
-          DKSalary,
+          ProjectedFantasyPoints: parseFloat(
+            ProjectedFantasyPoints,
+          ).toFixed(3),
+          DKSalary: DKSalary,
           HomeOrAway: data.HomeOrAway,
           AvgFPPM: parseFloat(AvgFPPM).toFixed(3),
           AvgFPPMHome: parseFloat(AvgFPPMHome).toFixed(3),
@@ -323,11 +378,22 @@ router.post(
           AvgFPPMLast5: parseFloat(AvgFPPMLast5).toFixed(3),
           AvgFPPMOpponent: parseFloat(AvgFPPMOpponent).toFixed(3),
           SDProjectedFPPM: parseFloat(SDProjectedFPPM).toFixed(3),
-          FantasyValue: parseFloat((ProjectedFantasyPoints / DKSalary) * 1000).toFixed(3),
+          FantasyValue: parseFloat(
+            (ProjectedFantasyPoints / DKSalary) * 1000,
+          ).toFixed(3),
           TeamID: data.TeamID,
           OpponentID: data.OpponentID,
-          PlayerID: data.PlayerID
+          PlayerID: data.PlayerID,
         };
+
+        const paceAdjustedProjection =
+          calculatePaceAdjustedProjection(player, teamStats.data);
+
+        (player.FantasyValue = parseFloat(
+          (paceAdjustedProjection / DKSalary) * 1000,
+        ).toFixed(3)),
+          (player.PaceAdjustedProtection = paceAdjustedProjection);
+        players.push(player);
       }
       return res.send({
         success: true,
