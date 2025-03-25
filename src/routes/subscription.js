@@ -148,23 +148,24 @@ router.post('/api/cancel-subscription', isAuthenticatedUser, async (req, res) =>
 router.post(
   '/api/chargebee-webhook',
   express.raw({ type: 'application/json' }),
-  (req, res) => {
-    const signature = req.headers['chargebee-webhook-signature'];
-    const body = req.body;
+  async (req, res) => {
+    const rawBody = req.body
 
     try {
-      const event = chargebee.webhooks.verify(body, signature);
+      //Bypass signature verification for testing
+      const signature = req.headers['chargebee-webhook-signature'];
+      const event = chargebee.webhooks.verify(rawBody, signature);
+
+      console.log('Verified event:', event);
 
       if (event.event_type === 'subscription_created') {
-        console.log(
-          'Subscription created:',
-          event.content.subscription,
-        );
+        console.log('Subscription created:', event.content.subscription);
+        // You can add more logic here to handle the subscription creation event
       }
 
       res.status(200).json({ received: true });
     } catch (err) {
-      console.error('Webhook signature verification failed:', err);
+      console.error('Webhook processing failed:', err);
       res.status(400).send('Webhook Error');
     }
   },
