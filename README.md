@@ -18,7 +18,7 @@ An easy way to get started with a Express server with MongoDB with Node.js. [Rea
 ## Installation
 - `npm install`
 - [start MongoDB](https://www.robinwieruch.de/mongodb-express-setup-tutorial/)
-- `npm start`
+- `npm start`cat 
 - optional: include _.env_ in your _.gitignore_
 
 ### GET Routes
