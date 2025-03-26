@@ -5,15 +5,17 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon --exec babel-node src/index.js",
-    "test": "echo \"No test specified\" && exit 0"
+    "test": "echo \"No test specified\" && exit 0",
+    "build": "babel src --out-dir dist"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@babel/cli": "^7.27.0",
     "@babel/core": "^7.9.0",
     "@babel/node": "^7.8.7",
-    "@babel/preset-env": "^7.9.5",
+    "@babel/preset-env": "^7.26.9",
     "nodemon": "^2.0.3"
   },
   "dependencies": {
@@ -26,7 +28,7 @@
     "express": "^4.17.1",
     "fs": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^5.9.10",
+    "mongoose": "^5.13.23",
     "nba": "^4.15.0",
     "nba-stats-client": "^1.0.2",
     "stripe": "^17.4.0"
