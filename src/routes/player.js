@@ -7,7 +7,6 @@ import LatestStatsDate from "../models/StatsDate"
 import LatestStatsDate from "../models/StatsDate"
 import Current from '../models/current';
 import lastData from './lastSeasonStat.json';
-import { STATES } from 'mongoose';
 import { isAuthenticatedUser } from '../middlewares/auth';
 import { checkTrialExpiration } from '../middlewares/trial';
 import { isAuthenticatedUser } from '../middlewares/auth';
