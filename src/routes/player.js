@@ -4,7 +4,6 @@ import axios from 'axios';
 import Last from '../models/last';
 import Player from '../models/player';
 import LatestStatsDate from "../models/StatsDate"
-import LatestStatsDate from "../models/StatsDate"
 import Current from '../models/current';
 import lastData from './lastSeasonStat.json';
 import { isAuthenticatedUser } from '../middlewares/auth';
