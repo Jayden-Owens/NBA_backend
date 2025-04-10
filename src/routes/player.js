@@ -4,9 +4,12 @@ import axios from 'axios';
 import Last from '../models/last';
 import Player from '../models/player';
 import LatestStatsDate from "../models/StatsDate"
+import LatestStatsDate from "../models/StatsDate"
 import Current from '../models/current';
 import lastData from './lastSeasonStat.json';
 import { STATES } from 'mongoose';
+import { isAuthenticatedUser } from '../middlewares/auth';
+import { checkTrialExpiration } from '../middlewares/trial';
 import { isAuthenticatedUser } from '../middlewares/auth';
 import { checkTrialExpiration } from '../middlewares/trial';
 
@@ -80,6 +83,9 @@ router.post('/current_year_players', async (req, res) => {
   try {
     const date = new Date();
     const year = date.getFullYear();
+    const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${
+      year - 1
+    }?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
     const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${
       year - 1
     }?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
@@ -159,6 +165,25 @@ router.post(
       const subscribed = req.locals.subscribed;
       const remainingTrialDays = res.locals.remainingTrialDays;
 
+      const date = new Date();
+      const year = date.getFullYear();
+      const formattedDate = `${year}-${monthNumberToAbbr(
+        date.getMonth(),
+      )}-${String(date.getDate()).padStart(2, '0')}`;
+      const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+
+      //scheduled match for tonight with players
+      const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+
+      const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${
+        year - 1
+      }?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+
+      const [response, response5, teamStats] = await Promise.all([
+        axios.get(url4),
+        axios.get(url5),
+        axios.get(url6),
+      ]);
       const date = new Date();
       const year = date.getFullYear();
       const formattedDate = `${year}-${monthNumberToAbbr(
@@ -508,13 +533,88 @@ router.post(
 
         if (currentSeasonResponse.status !== 200) {
           throw new Error(`HTTP error! status: ${currentSeasonResponse.status}`);
+router.post(
+  '/today_update',
+  isAuthenticatedUser,
+  checkTrialExpiration,
+  async (req, res) => {
+    try {
+      const currentDate = new Date();
+      const startOfSeason = new Date(currentDate.getFullYear() - 1, 9, 1); // October 1
+
+      // Fetch the latest date stored in the database
+      const latestDateRecord = await LatestStatsDate.findOne({}).sort({ Date: -1 });
+      let latestDate = startOfSeason; // Default to the start of the season if no record exists
+
+      if (latestDateRecord) {
+        latestDate = latestDateRecord.Date; // Get the latest date from the database
+      }
+
+      console.log("Latest Date in DB:", latestDate);
+
+      // Check if the current date is later than the latest stored date
+      if (currentDate > latestDate) {
+        // Iterate through each date from latestDate + 1 to today
+        for (let date = new Date(latestDate); date <= currentDate; date.setDate(date.getDate() + 1)) {
+          // Check if data for this date already exists in Player model
+          const existingPlayerData = await Player.findOne({
+            Day: date.toISOString().split('T')[0], // Ensure you're using the correct field for the date
+          });
+
+          if (existingPlayerData) {
+            console.log(`Data for ${date.toDateString()} already exists in Player. Skipping.`);
+          } else {
+            // Fetch data for PlayerGameStatsByDate
+            const stats = await fetchPlayerGameStats(date);
+            if (stats && stats.length > 0) {
+              await Player.insertMany(stats); // Save actual game data to Player model
+              console.log(`Data for ${date.toDateString()} saved in Player.`);
+            } else {
+              console.log(`No stats available for ${date.toDateString()}.`);
+            }
+          }
         }
+
+        // Update LatestStatsDate to reflect the latest processed date (today)
+        const newLatestDate = new LatestStatsDate({ Date: currentDate });
+        await newLatestDate.save(); // Save the latest date as today's date
+        console.log(`Latest date updated to: ${currentDate.toDateString()}`);
+      } else {
+        console.log("No new data to store.");
+      }
+
+      // Fetch current season data for PlayerSeasonStats if not already done
+      const year = currentDate.getFullYear() - 1; // This seems to be a year behind, as per your example
+      const currentSeasonExists = await Current.findOne({ Season: year });
+
+      if (!currentSeasonExists) {
+        console.log(`Fetching season data for ${year}...`);
+        const currentSeasonUrl = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+        const currentSeasonResponse = await axios.get(currentSeasonUrl);
+
+        if (currentSeasonResponse.status !== 200) {
+          throw new Error(`HTTP error! status: ${currentSeasonResponse.status}`);
+        }
+
+        await Current.insertMany(currentSeasonResponse.data);
+        console.log(`Season data for ${year} saved.`);
 
         await Current.insertMany(currentSeasonResponse.data);
         console.log(`Season data for ${year} saved.`);
       } else {
         console.log(`Season data for ${year} already exists.`);
+        console.log(`Season data for ${year} already exists.`);
       }
+
+      return res.send({ message: 'Update completed successfully.' });
+    } catch (error) {
+      console.error(`Error updating player game stats:`, error.message);
+      return res.status(500).send({ error: error.message });
+    }
+  }
+);
+
+
 
       return res.send({ message: 'Update completed successfully.' });
     } catch (error) {
