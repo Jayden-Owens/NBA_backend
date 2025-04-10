@@ -8,8 +8,6 @@ import Current from '../models/current';
 import lastData from './lastSeasonStat.json';
 import { isAuthenticatedUser } from '../middlewares/auth';
 import { checkTrialExpiration } from '../middlewares/trial';
-import { isAuthenticatedUser } from '../middlewares/auth';
-import { checkTrialExpiration } from '../middlewares/trial';
 
 const router = Router();
 
