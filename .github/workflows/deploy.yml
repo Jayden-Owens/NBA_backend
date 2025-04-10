@@ -54,5 +54,5 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu
+            cd /home/ubuntu/NBA_backend
             pm2 restart NBA_backend || pm2 start dist/index.js --name "NBA_backend" 
