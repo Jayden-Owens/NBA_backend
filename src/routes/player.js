@@ -156,6 +156,7 @@ router.post(
   async (req, res) => {
     try {
       //trial check
+      const subscribed = req.locals.subscribed;
       const remainingTrialDays = res.locals.remainingTrialDays;
 
       const date = new Date();
@@ -395,12 +396,21 @@ router.post(
           (player.PaceAdjustedProtection = paceAdjustedProjection);
         players.push(player);
       }
+      if(subscribed === false) {
       return res.send({
         success: true,
         state: players,
         paceData: '',
         remainingTrialDays,
       });
+    } else {
+      return res.send({
+        success: true,
+        state: players,
+        paceData: '',
+        subscribed: subscribed,
+      });
+    }
     } catch (error) {
       console.error(error);
       return res.send({ state: error.message });

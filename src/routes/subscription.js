@@ -102,7 +102,8 @@ router.post('/api/subscription', isAuthenticatedUser, async (req, res) => {
       }
   
       user.trialStartDate = new Date();
-      user.trialExpired = false;
+      user.trialExpired = true;
+      user.isSubscribed = true;
   
       await user.save();
 
@@ -149,26 +150,73 @@ router.post(
   '/api/chargebee-webhook',
   express.raw({ type: 'application/json' }),
   async (req, res) => {
-    const rawBody = req.body
+    const rawBody = req.body;
+    const signature = req.headers['chargebee-webhook-signature'];
+
+    if (!signature) {
+      console.error('No webhook signature found');
+      return res.status(400).json({ error: 'No webhook signature found' });
+    }
 
     try {
-      //Bypass signature verification for testing
-      const signature = req.headers['chargebee-webhook-signature'];
       const event = chargebee.webhooks.verify(rawBody, signature);
-
       console.log('Verified event:', event);
 
       if (event.event_type === 'subscription_created') {
         console.log('Subscription created:', event.content.subscription);
-        // You can add more logic here to handle the subscription creation event
+        // Update user subscription status
+        const customer = event.content.customer;
+        const user = await User.findOne({ email: customer.email });
+        
+        if (user) {
+          user.isSubscribed = true;
+          user.trialExpired = true;
+          await user.save();
+          console.log('Updated user subscription status:', user.email);
+        }
+      } else if (event.event_type === 'payment_intent.succeeded') {
+        console.log('Payment succeeded:', event.content.payment_intent);
+        
+        // Get the customer and subscription details from the payment intent
+        const paymentIntent = event.content.payment_intent;
+        const customer = await stripe.customers.retrieve(paymentIntent.customer);
+        
+        // Find the user
+        const user = await User.findOne({ email: customer.email });
+        
+        if (user) {
+          // Create subscription in Chargebee
+          const subscription = await chargebee.subscription
+            .create_with_items(customer.id, {
+              subscription_items: [
+                {
+                  item_price_id: paymentIntent.metadata.plan_id,
+                  unit_price: paymentIntent.amount,
+                },
+              ],
+              payment_intent: {
+                gateway_account_id: process.env.CHARGEBEE_STRIPE_GATEWAY_ID,
+                gw_payment_intent_id: paymentIntent.id,
+              },
+            })
+            .request();
+
+          // Update user status
+          user.isSubscribed = true;
+          user.trialExpired = true;
+          await user.save();
+          
+          console.log('Created subscription and updated user status:', user.email);
+        }
       }
 
-      res.status(200).json({ received: true });
+      // Always return 200 for successful webhook processing
+      return res.status(200).json({ received: true });
     } catch (err) {
       console.error('Webhook processing failed:', err);
-      res.status(400).send('Webhook Error');
+      return res.status(400).json({ error: 'Webhook Error' });
     }
-  },
+  }
 );
 
 export default router;

@@ -7,7 +7,6 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     trialStartDate: { type: Date, required: true },
     trialExpired: { type: Boolean, default: false },
-    isSubscribed: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

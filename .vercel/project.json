@@ -1,0 +1,15 @@
+{
+  "projectId": "prj_kA34A2RmEBz9cGe67uheAaXl2xEL",
+  "orgId": "team_UUUXJbMToLKzzld79AfmLsxh",
+  "settings": {
+    "createdAt": 1743000793084,
+    "framework": null,
+    "devCommand": null,
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "22.x"
+  }
+}
