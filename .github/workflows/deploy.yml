@@ -55,4 +55,4 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd NBA_backend
-            pm2 restart NBA_backend || pm2 start dist/index.js --name "NBA_backend" 
+            pm2 restart all 
