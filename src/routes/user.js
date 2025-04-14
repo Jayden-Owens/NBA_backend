@@ -106,7 +106,7 @@ router.post('/login', async (req, res) => {
       },
       portalUrl: ssoResponse?.portal_session?.access_url,
       isTrialExpired: user.isTrialExpired(),
-      subscribed: user.subscribed,
+      subscribed: true,
     });
   } catch (err) {
     console.error(err);
