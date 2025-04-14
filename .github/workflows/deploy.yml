@@ -11,6 +11,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+
       - name: Create .env file
         run: |
           cat << EOF > .env
@@ -29,18 +43,17 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "src/*,.env,package.json,package-lock.json"
+          source: "dist/*,.env"
           target: "/home/ubuntu/NBA_backend"
-          strip_components: 0
+          strip_components: 1
 
-      - name: Install dependencies and restart
+      - name: Restart application
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu/NBA_backend
-            npm install
-            pm2 restart all
+            cd NBA_backend
+            pm2 restart all 
             pm2 start npm -- start
