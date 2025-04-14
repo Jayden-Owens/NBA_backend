@@ -28,7 +28,6 @@ app.use('/user', routes.user);
 
 connectDb().then(async () => {
   app.listen(process.env.PORT, '0.0.0.0',  () =>
-    console.log(`NBA App listening on port ${process.env.PORT}!`),
+    console.log(`NBA App listening on port booty ${process.env.PORT}!`),
   );
 });
-// new version
