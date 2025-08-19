@@ -1,4 +1,4 @@
-import User from "../models/user";
+import User from "../models/user.js";
 
 export const checkTrialExpiration = async (req, res, next) => {
   const userId = req.user.id;
@@ -9,7 +9,7 @@ export const checkTrialExpiration = async (req, res, next) => {
     if (!user) {
       return res.status(404).send("User not found");
     }
-    if(user.subscribed === false) {
+    if(user.isSubscribed === false) {
       
       const now = new Date();
       const trialStartDate = new Date(user.trialStartDate);
@@ -23,7 +23,7 @@ export const checkTrialExpiration = async (req, res, next) => {
       
       res.locals.remainingTrialDays = remainingDays;
     }
-    res.locals.subscribed = user.subscribed;
+    res.locals.subscribed = user.isSubscribed;
 
     next();
 
