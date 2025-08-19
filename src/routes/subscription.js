@@ -1,8 +1,8 @@
 import express, { Router } from 'express';
 import chargebee from 'chargebee';
 import Stripe from 'stripe';
-import { isAuthenticatedUser } from '../middlewares/auth';
-import User from "../models/user"
+import { isAuthenticatedUser } from '../middlewares/auth.js';
+import User from "../models/user.js"
 
 const router = Router();
 

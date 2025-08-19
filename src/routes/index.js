@@ -1,6 +1,6 @@
-import user from './user';
-import player from './player';
-import subscription from './subscription';
+import user from './user.js';
+import player from './player.js';
+import subscription from './subscription.js';
 
 export default {
   player,

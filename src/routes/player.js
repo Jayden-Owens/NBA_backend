@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import axios from 'axios';
 
-import Last from '../models/last';
-import Player from '../models/player';
-import LatestStatsDate from "../models/StatsDate"
-import Current from '../models/current';
-import lastData from './lastSeasonStat.json';
-import { isAuthenticatedUser } from '../middlewares/auth';
-import { checkTrialExpiration } from '../middlewares/trial';
+import Last from '../models/last.js';
+import Player from '../models/player.js';
+import LatestStatsDate from "../models/StatsDate.js"
+import Current from '../models/current.js';
+import lastData from './lastSeasonStat.json' with {type: 'json'};
+import { isAuthenticatedUser } from '../middlewares/auth.js';
+import { checkTrialExpiration } from '../middlewares/trial.js';
 
 const router = Router();
 
@@ -155,7 +155,7 @@ router.post(
   async (req, res) => {
     try {
       //trial check
-      const subscribed = req.locals.subscribed;
+      const subscribed = res.locals.subscribed;
       const remainingTrialDays = res.locals.remainingTrialDays;
 
       const date = new Date();
@@ -168,8 +168,10 @@ router.post(
       //scheduled match for tonight with players
       const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
 
+      //const seasonInfo = 
+
       const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${
-        year - 1
+        year 
       }?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
 
       const [response, response5, teamStats] = await Promise.all([
@@ -181,6 +183,7 @@ router.post(
       if (response.status !== 200 || response5.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      console.log("here")
       let players = [];
       let ID = 0;
 

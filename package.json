@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
- "scripts": {
-  "start": "node dist/index.js",
-  "dev": "nodemon --exec babel-node src/index.js",
-  "build": "babel src --out-dir dist"
-},
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "nodemon --exec babel-node src/index.js",
+    "build": "babel src --out-dir dist"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -24,8 +24,8 @@
     "body-parser": "^1.20.3",
     "chargebee": "^2.45.0",
     "cors": "^2.8.5",
-    "dotenv": "^8.2.0",
-    "express": "^4.17.1",
+    "dotenv": "^8.6.0",
+    "express": "^4.21.2",
     "fs": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^5.13.23",
@@ -33,4 +33,5 @@
     "nba-stats-client": "^1.0.2",
     "stripe": "^17.4.0"
   }
+ 
 }
