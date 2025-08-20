@@ -14,8 +14,12 @@ chargebee.configure({
   api_key: process.env.CHARGEBEE_API_KEY,
 });
 
+const corsOptions = {
+  origin: 'https://app.fantasyhacker.com/', 
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
