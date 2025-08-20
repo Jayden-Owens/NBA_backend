@@ -5,7 +5,7 @@ import Last from '../models/last.js';
 import Player from '../models/player.js';
 import LatestStatsDate from "../models/StatsDate.js"
 import Current from '../models/current.js';
-import lastData from './lastSeasonStat.json' with {type: 'json'};
+//import lastData from './lastSeasonStat.json' with {type: 'json'};
 import { isAuthenticatedUser } from '../middlewares/auth.js';
 import { checkTrialExpiration } from '../middlewares/trial.js';
 
@@ -68,12 +68,12 @@ router.post('/all_dates_players', async (req, res) => {
   return res.send({ state: 'success' });
 });
 
-router.post('/last_year_players', async (req, res) => {
-  lastData.forEach(async (data, i) => {
-    await Last.create(data);
-  });
-  return res.send({ state: 'success' });
-});
+// router.post('/last_year_players', async (req, res) => {
+//   lastData.forEach(async (data, i) => {
+//     await Last.create(data);
+//   });
+//   return res.send({ state: 'success' });
+// });
 
 router.post('/current_year_players', async (req, res) => {
   try {
