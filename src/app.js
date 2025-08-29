@@ -18,6 +18,14 @@ const corsOptions = {
   origin: '*', 
 };
 
+app.use((req, _res, next) => {
+  // collapse multiple slashes in the path only (leave query alone)
+  const [p, q=''] = req.url.split('?', 2);
+  req.url = p.replace(/\/{2,}/g, '/') + (q ? '?' + q : '');
+  next();
+});
+
+
 // // Middleware
 app.use(cors(corsOptions));
 
