@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import cors from 'cors';
 import express from 'express';
 import bodyParser from 'body-parser';
 import chargebee from 'chargebee';
@@ -20,8 +19,6 @@ chargebee.configure({
 
 // // Middleware
 // app.use(cors(corsOptions));
-const cors = require('cors');
-app.use(cors({ origin: 'https://app.fantasyhacker.com' }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
