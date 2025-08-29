@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import cors from 'cors';
 import express from 'express';
 import bodyParser from 'body-parser';
 import chargebee from 'chargebee';
@@ -13,9 +14,9 @@ chargebee.configure({
   api_key: process.env.CHARGEBEE_API_KEY,
 });
 
-// const corsOptions = {
-//   origin: 'https://app.fantasyhacker.com/', 
-// };
+const corsOptions = {
+  origin: '*', 
+};
 
 // // Middleware
 // app.use(cors(corsOptions));
