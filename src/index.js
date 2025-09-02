@@ -26,7 +26,7 @@ import routes from './routes';
 // app.use('/player', routes.player);
 // app.use('/subscription', routes.subscription);
 // app.use('/user', routes.user);
-
+console.log("44.1");
 connectDb().then(async () => {
   app.listen(process.env.PORT, '0.0.0.0',  () =>
     console.log(`NBA App listening on port booty ${process.env.PORT}!`),
