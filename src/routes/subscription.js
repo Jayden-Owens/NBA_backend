@@ -7,7 +7,7 @@ import User from "../models/user.js"
 const router = Router();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-08-16',
+  apiVersion: '2024-06-20',
 });
 
 router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
