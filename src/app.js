@@ -38,5 +38,6 @@ console.log("2");
 app.use('/player', routes.player);
 app.use('/subscription', routes.subscription);
 app.use('/user', routes.user);
+console.log("3");
 
 export default app;
