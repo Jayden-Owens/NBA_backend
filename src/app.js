@@ -22,12 +22,12 @@ chargebee.configure({
 // app.use(cors(corsOptions));
 const cors = require('cors');
 app.use(cors({ origin: 'https://app.fantasyhacker.com' }));
-
+console.log("1");
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
+console.log("2");
 // Routes
 app.use('/player', routes.player);
 app.use('/subscription', routes.subscription);
