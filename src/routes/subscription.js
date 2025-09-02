@@ -13,7 +13,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
   try {
     const { email, name } = req.body;
-   
+    console.log(process.env.STRIPE_SECRET_KEY)
     // 👉 1️⃣ Check if customer exists in Stripe
     let stripeCustomer = await stripe.customers.list({ email });
     console.log(stripeCustomer);
