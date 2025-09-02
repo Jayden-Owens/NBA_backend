@@ -14,15 +14,21 @@ chargebee.configure({
   api_key: process.env.CHARGEBEE_API_KEY,
 });
 
-// const corsOptions = {
-//   origin: 'https://app.fantasyhacker.com/', 
-// };
+const corsOptions = {
+  origin: '*', 
+};
+
+app.use((req, _res, next) => {
+  // collapse multiple slashes in the path only (leave query alone)
+  const [p, q=''] = req.url.split('?', 2);
+  req.url = p.replace(/\/{2,}/g, '/') + (q ? '?' + q : '');
+  next();
+});
+
 
 // // Middleware
-// app.use(cors(corsOptions));
-const cors = require('cors');
-app.use(cors({ origin: 'https://app.fantasyhacker.com' }));
-console.log("1");
+app.use(cors(corsOptions));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
