@@ -32,3 +32,5 @@ connectDb().then(async () => {
     console.log(`NBA App listening on port booty ${process.env.PORT}!`),
   );
 });
+
+console.log("4");
