@@ -13,9 +13,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
   try {
     const { email, name } = req.body;
-   console.log("0");
+   
     // 👉 1️⃣ Check if customer exists in Stripe
     let stripeCustomer = await stripe.customers.list({ email });
+    console.log(stripeCustomer);
     if (stripeCustomer.data.length > 0) {
       stripeCustomer = stripeCustomer.data[0]; // Use existing customer
     } else {
