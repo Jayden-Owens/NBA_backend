@@ -33,11 +33,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-console.log("2");
+
 // Routes
 app.use('/player', routes.player);
 app.use('/subscription', routes.subscription);
 app.use('/user', routes.user);
-console.log("3");
+
 
 export default app;
