@@ -29,14 +29,25 @@ const monthNumberToAbbr = (monthNumber) => {
   return months[monthNumber] || 'Invalid month';
 };
 
+const GetCurrentSeason = async () => {
+  const url = `https://api.sportsdata.io/api/nba/fantasy/json/CurrentSeason`;
+  const response = await axios.get(url, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } });
+  if (response.status !== 200) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  const year = response.data.Season;
+  return year;
+};
+
 const fetchPlayerGameStats = async (date) => {
   try {
-    const year = date.getFullYear();
+    //const year = date.getFullYear();
+    const year = await GetCurrentSeason();
     const formattedDate = `${year}-${monthNumberToAbbr(
       date.getMonth(),
     )}-${String(date.getDate()).padStart(2, '0')}`;
-    const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameStatsByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
-    const response = await axios.get(url);
+    const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameStatsByDate/${formattedDate}`;
+    const response = await axios.get(url, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } });
 
     if (response.status !== 200) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -78,11 +89,10 @@ router.post('/all_dates_players', async (req, res) => {
 router.post('/current_year_players', async (req, res) => {
   try {
     const date = new Date();
-    const year = date.getFullYear();
-    const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${
-      year - 1
-    }?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
-    const response = await axios.get(url);
+    //const year = date.getFullYear();
+    const year = await GetCurrentSeason();
+    const url = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year}`;
+    const response = await axios.get(url, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } });
     if (response.status !== 200) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -159,25 +169,24 @@ router.post(
       const remainingTrialDays = res.locals.remainingTrialDays;
 
       const date = new Date();
-      const year = date.getFullYear();
+      //const year = date.getFullYear();
+      const year = await GetCurrentSeason();
       const formattedDate = `${year}-${monthNumberToAbbr(
         date.getMonth(),
       )}-${String(date.getDate()).padStart(2, '0')}`;
-      const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+      const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}`;
 
       //scheduled match for tonight with players
-      const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+      const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}`;
 
       //const seasonInfo = 
 
-      const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${
-        year 
-      }?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
+      const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${year}`;
 
       const [response, response5, teamStats] = await Promise.all([
-        axios.get(url4),
-        axios.get(url5),
-        axios.get(url6),
+        axios.get(url4, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
+        axios.get(url5, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
+        axios.get(url6, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
       ]);
 
       if (response.status !== 200 || response5.status !== 200) {
@@ -398,21 +407,21 @@ router.post(
           (player.PaceAdjustedProtection = paceAdjustedProjection);
         players.push(player);
       }
-      if(subscribed === false) {
-      return res.send({
-        success: true,
-        state: players,
-        paceData: '',
-        remainingTrialDays,
-      });
-    } else {
-      return res.send({
-        success: true,
-        state: players,
-        paceData: '',
-        subscribed: subscribed,
-      });
-    }
+      if (subscribed === false) {
+        return res.send({
+          success: true,
+          state: players,
+          paceData: '',
+          remainingTrialDays,
+        });
+      } else {
+        return res.send({
+          success: true,
+          state: players,
+          paceData: '',
+          subscribed: subscribed,
+        });
+      }
     } catch (error) {
       console.error(error);
       return res.send({ state: error.message });
@@ -434,10 +443,7 @@ router.post('/pace', async (req, res) => {
     const API_KEY = 'aa200247-6715-4fb1-8520-c842718e498c';
     const url = `https://api.balldontlie.io/v1/stats/advanced?seasons[]=2024&posteason=true&${teams_query}&per_page=10000`;
     const response = await axios.get(url, {
-      headers: {
-        Authorization: API_KEY,
-      },
-    });
+       headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } });
 
     if (response.status !== 200) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -500,13 +506,14 @@ router.post(
       }
 
       // Fetch current season data for PlayerSeasonStats if not already done
-      const year = currentDate.getFullYear() - 1; // This seems to be a year behind, as per your example
+      //const year = currentDate.getFullYear() - 1; // This seems to be a year behind, as per your example
+      const year = await GetCurrentSeason();
       const currentSeasonExists = await Current.findOne({ Season: year });
 
       if (!currentSeasonExists) {
         console.log(`Fetching season data for ${year}...`);
-        const currentSeasonUrl = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year}?key=5e7cd68a3a2f42b0ac2aeb9abc091748`;
-        const currentSeasonResponse = await axios.get(currentSeasonUrl);
+        const currentSeasonUrl = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerSeasonStats/${year}`;
+        const currentSeasonResponse = await axios.get(currentSeasonUrl, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } });
 
         if (currentSeasonResponse.status !== 200) {
           throw new Error(`HTTP error! status: ${currentSeasonResponse.status}`);
@@ -525,5 +532,17 @@ router.post(
     }
   }
 );
+
+// Return current season year from GetCurrentSeason
+router.get('/current_season', async (req, res) => {
+  console.log("Fetching current season year...");
+  try {
+    const year = await GetCurrentSeason();
+    return res.json({ success: true, season: year });
+  } catch (error) {
+    console.error('Error getting current season:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 export default router;
