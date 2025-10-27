@@ -18,6 +18,7 @@ const corsOptions = {
   origin: '*', 
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  Credentials: true,
 };
 
 // app.use((req, _res, next) => {
