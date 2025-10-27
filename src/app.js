@@ -30,8 +30,12 @@ const corsOptions = {
 
 
 // // Middleware
-app.use(cors(corsOptions));
-
+//app.use(cors(corsOptions));
+app.use(cors({
+  origin: 'https://app.fantasyhacker.com',
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
