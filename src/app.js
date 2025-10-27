@@ -16,6 +16,8 @@ chargebee.configure({
 
 const corsOptions = {
   origin: '*', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 // app.use((req, _res, next) => {
