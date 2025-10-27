@@ -6,7 +6,7 @@ import User from "../models/user.js"
 
 const router = Router();
 
-const stripe = new Stripe('sk_test_51QejDw2XuueV3a1X7DOqUk17Lg3KgESu1teA0D1XARJ1vqT8azGsFc73m5tMD1hlXAztfy1WdCFK0d39tzE3LpE600dn7LUKp0', {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-06-20',
 });
 
