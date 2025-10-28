@@ -48,7 +48,7 @@ const calculatePaceAdjustedProjection = (player, teamStats) => {
 };
 
 export async function processPlayerAverageData(email, name, current_season) {
-
+    console.log('started processing for');
     //trial check
     const subscribed = res.locals.subscribed;
     //const subscribed = true;
@@ -79,7 +79,7 @@ export async function processPlayerAverageData(email, name, current_season) {
     if (response.status !== 200 || response5.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
-
+    console.log('fetched all data');
     const playerMetaMap = new Map();
     response5.data.forEach(slate => {
         slate.DfsSlatePlayers.forEach(player => {
