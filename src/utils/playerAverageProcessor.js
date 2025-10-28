@@ -50,9 +50,9 @@ const calculatePaceAdjustedProjection = (player, teamStats) => {
 export async function processPlayerAverageData(email, name, current_season) {
     console.log('started processing for');
     //trial check
-    const subscribed = res.locals.subscribed;
+    //const subscribed = res.locals.subscribed;
     //const subscribed = true;
-    const remainingTrialDays = res.locals.remainingTrialDays;
+    //const remainingTrialDays = res.locals.remainingTrialDays;
     console.log("1");
     const date = new Date();
     const curYear = date.getFullYear();
@@ -69,7 +69,7 @@ export async function processPlayerAverageData(email, name, current_season) {
     //const seasonInfo = 
 
     const url6 = `https://api.sportsdata.io/v3/nba/scores/json/TeamSeasonStats/${year}?key=0224aa9e70ad409b99dd353a27fccdae`;
-
+     console.log("2");
     const [response, response5, teamStats] = await Promise.all([
         axios.get(url4),//, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
         axios.get(url5), //, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
@@ -92,7 +92,7 @@ export async function processPlayerAverageData(email, name, current_season) {
 
     let players = [];
     let ID = 0;
-
+     console.log("3");
     for (const data of response.data) {
         const meta = playerMetaMap.get(data.PlayerID) || {};
         const DKSalary = meta.salary || 0;
