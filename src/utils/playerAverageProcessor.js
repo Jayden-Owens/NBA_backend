@@ -188,6 +188,6 @@ export async function processPlayerAverageData(email, name, current_season, subs
         players.push(player);
     }
     console.log('finished processing');
-    return players;
+    return (players, subscribed, remainingTrialDays);
 }
 
