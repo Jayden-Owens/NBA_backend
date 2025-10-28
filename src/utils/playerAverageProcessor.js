@@ -53,11 +53,11 @@ export async function processPlayerAverageData(email, name, current_season) {
     const subscribed = res.locals.subscribed;
     //const subscribed = true;
     const remainingTrialDays = res.locals.remainingTrialDays;
-
+    console.log("1");
     const date = new Date();
     const curYear = date.getFullYear();
     const curMonth = date.getMonth() + 1;
-    const year = await GetCurrentSeason();
+    const year = current_season;
     //const formattedDate = `${curYear}-${date.getMonth()}-${String(date.getDate()).padStart(2, '0')}`;
     const formattedDate = `${curYear}-${curMonth}-${String(date.getDate()).padStart(2, '0')}`;
     console.log("Formatted Date:", formattedDate);
