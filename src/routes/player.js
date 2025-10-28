@@ -175,7 +175,7 @@ router.post(
     //let chargebeeCustomerResponse = await chargebee.customer.list({ "email[is]": req.body.email }).request();
     //console.log(chargebeeCustomerResponse.list[0]);
      try {
-        const job = await playerAverageQueue.add({email, name, year});
+        const job = await playerAverageQueue.add({email, name, year, subscribed, remainingTrialDays});
     //   //trial check
     //   const subscribed = res.locals.subscribed;
     //   //const subscribed = true;
