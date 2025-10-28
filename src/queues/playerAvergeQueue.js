@@ -7,7 +7,7 @@ const playerAverageQueue = new Queue('playerAverage', redisUrl);
 
 playerAverageQueue.process(async (job) => {
   const { email, name, year, subscribed, remainingTrialDays } = job.data;
-  return await processPlayerAverageData(email, name, year,subscribe, remainingTrialDays);
+  return await processPlayerAverageData(email, name, year,subscribed, remainingTrialDays);
 });
 
 export default playerAverageQueue;

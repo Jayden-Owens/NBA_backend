@@ -52,7 +52,7 @@ const calculatePaceAdjustedProjection = (player, teamStats) => {
   return paceAdjustedFantasyPoints.toFixed(3);
 };
 
-export async function processPlayerAverageData(email, name, current_season) {
+export async function processPlayerAverageData(email, name, current_season, subscribed, remainingTrialDays) {
     console.log('started processing for');
     //trial check
     //const subscribed = res.locals.subscribed;
