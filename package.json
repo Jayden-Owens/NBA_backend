@@ -22,6 +22,7 @@
     "axios": "^1.7.7",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",
+    "bull": "^4.16.5",
     "chargebee": "^2.45.0",
     "cors": "^2.8.5",
     "dotenv": "^8.6.0",
@@ -31,6 +32,7 @@
     "mongoose": "^5.13.23",
     "nba": "^4.15.0",
     "nba-stats-client": "^1.0.2",
+    "redis": "^5.9.0",
     "stripe": "^17.4.0"
   }
 }

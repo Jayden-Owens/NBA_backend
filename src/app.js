@@ -17,8 +17,6 @@ chargebee.configure({
 const corsOptions = {
   origin: '*', 
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  Credentials: true,
 };
 
 // app.use((req, _res, next) => {
@@ -30,12 +28,12 @@ const corsOptions = {
 
 
 // // Middleware
-//app.use(cors(corsOptions));
-app.use(cors({
-  origin: 'https://app.fantasyhacker.com',
-  methods: ['GET', 'POST'],
-  credentials: true
-}));
+app.use(cors(corsOptions));
+// app.use(cors({
+//   origin: '*',
+//   methods: ['GET', 'POST'],
+//   credentials: true
+// }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
