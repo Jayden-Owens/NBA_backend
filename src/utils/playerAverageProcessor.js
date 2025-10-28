@@ -77,6 +77,7 @@ export async function processPlayerAverageData(email, name, current_season) {
     ]);
 
     if (response.status !== 200 || response5.status !== 200) {
+        console.error('Error fetching data from API'+response.status+response5.status);
         throw new Error(`HTTP error! status: ${response.status}`);
     }
     console.log('fetched all data');
