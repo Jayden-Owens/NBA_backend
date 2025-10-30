@@ -19,7 +19,7 @@
     "nodemon": "^2.0.3"
   },
   "dependencies": {
-    "axios": "^1.7.7",
+    "axios": "^1.13.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",
     "bull": "^4.16.5",
@@ -32,6 +32,7 @@
     "mongoose": "^5.13.23",
     "nba": "^4.15.0",
     "nba-stats-client": "^1.0.2",
+    "node-fetch": "^3.3.2",
     "redis": "^5.9.0",
     "stripe": "^17.4.0"
   }

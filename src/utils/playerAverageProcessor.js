@@ -64,17 +64,16 @@ export async function processPlayerAverageData(email, name, current_season, subs
     const curMonth = date.getMonth() + 1;
     const year = current_season;
     //const formattedDate = `${curYear}-${date.getMonth()}-${String(date.getDate()).padStart(2, '0')}`;
-    const formattedDate = `${curYear}-${curMonth}-${String(date.getDate()).padStart(2, '0')}`;
-    console.log("Formatted Date:", formattedDate);
+    //const formattedDate = `${curYear}-${curMonth}-${String(date.getDate()).padStart(2, '0')}`;
+    const formattedDate = `${curMonth}-${String(date.getDate()).padStart(2, '0')}-${curYear}`;
     const url4 = `https://api.sportsdata.io/v3/nba/projections/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=0224aa9e70ad409b99dd353a27fccdae`;
 
     //scheduled match for tonight with players
     const url5 = `https://api.sportsdata.io/v3/nba/projections/json/DfsSlatesByDate/${formattedDate}?key=0224aa9e70ad409b99dd353a27fccdae`;
 
-    //const seasonInfo = 
-
     const url6 = `https://api.sportsdata.io/v3/nba/scores/json/TeamSeasonStats/${year}?key=0224aa9e70ad409b99dd353a27fccdae`;
-     console.log("2");
+
+    
     const [response, response5, teamStats] = await Promise.all([
         axios.get(url4),//, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
         axios.get(url5), //, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
@@ -85,7 +84,7 @@ export async function processPlayerAverageData(email, name, current_season, subs
         console.error('Error fetching data from API'+response.status+response5.status);
         throw new Error(`HTTP error! status: ${response.status}`);
     }
-    console.log('fetched all data');
+
     const playerMetaMap = new Map();
     response5.data.forEach(slate => {
         slate.DfsSlatePlayers.forEach(player => {
@@ -98,7 +97,6 @@ export async function processPlayerAverageData(email, name, current_season, subs
 
     let players = [];
     let ID = 0;
-     console.log("3");
     for (const data of response.data) {
         const meta = playerMetaMap.get(data.PlayerID) || {};
         const DKSalary = meta.salary || 0;
