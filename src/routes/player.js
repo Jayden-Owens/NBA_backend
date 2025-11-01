@@ -173,14 +173,14 @@ router.post(
     const remainingTrialDays = res.locals.remainingTrialDays;
 
     try {
-      const chargebeeCustomerResponse = await chargebee.customer.list({ email: { is: email } }).request();
+      // const chargebeeCustomerResponse = await chargebee.customer.list({ email: { is: email } }).request();
 
-      const chargebeeCustomer = chargebeeCustomerResponse.list.find(c => c.email === email).customer.id;
-      const chargebeeCustomerSubscription = await chargebee.subscription.list({
-        limit: 1,
-        customer_id: { is: chargebeeCustomer }
-      }).request();
-      console.log("Chargebee Customer:", chargebeeCustomerSubscription.list[0].subscription.status);
+      // const chargebeeCustomer = chargebeeCustomerResponse.list.find(c => c.email === email).customer.id;
+      // const chargebeeCustomerSubscription = await chargebee.subscription.list({
+      //   limit: 1,
+      //   customer_id: { is: chargebeeCustomer }
+      // }).request();
+      // console.log("Chargebee Customer:", chargebeeCustomerSubscription.list[0].subscription.status);
       //console.log(chargebeeCustomerResponse.list[0]);
 
       const job = await playerAverageQueue.add({ email, name, year, subscribed, remainingTrialDays });
