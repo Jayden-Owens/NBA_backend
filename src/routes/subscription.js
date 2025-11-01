@@ -25,7 +25,7 @@ router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
         name: name,
       });
     }
-    console.log("1");
+    
     // 👉 2️⃣ Check if customer exists in Chargebee
     let chargebeeCustomerResponse = await chargebee.customer.list({ "email[is]": email }).request();
     let chargebeeCustomer;
@@ -39,7 +39,7 @@ router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
       }).request();
       chargebeeCustomer = newChargebeeCustomer.customer;
     }
-    console.log("2");
+    
     // 👉 3️⃣ Return response with existing or new customer IDs
     return res.status(200).json({
       success: true,

@@ -94,20 +94,31 @@ export async function processPlayerAverageData(email, name, current_season, subs
     //const url6 = `https://api.sportsdata.io/v3/nba/scores/json/TeamSeasonStats/${year}?key=0224aa9e70ad409b99dd353a27fccdae`;
     const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${year}`;
 
-    console.log("1");
+    
     const [response, response5, teamStats] = await Promise.all([
         axios.get(url4, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
         axios.get(url5, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
         axios.get(url6, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
     ]);
-    console.log("1");
+    const slateData = response5.data.filter(slate => slate.OperatorGameType == 'Classic' && slate.Operator == 'DraftKings');
+
     if (response.status !== 200 || response5.status !== 200) {
         console.error('Error fetching data from API'+response.status+response5.status);
         throw new Error(`HTTP error! status: ${response.status}`);
     }
 
+    // const playerMetaMap = new Map();
+    // response5.data.forEach(slate => {
+    //     slate.DfsSlatePlayers.forEach(player => {
+    //         playerMetaMap.set(player.PlayerID, {
+    //             salary: player.OperatorSalary,
+    //             position: player.OperatorPosition
+    //         });
+    //     });
+    // });
+    console.log('new');
     const playerMetaMap = new Map();
-    response5.data.forEach(slate => {
+    slateData.forEach(slate => {
         slate.DfsSlatePlayers.forEach(player => {
             playerMetaMap.set(player.PlayerID, {
                 salary: player.OperatorSalary,
