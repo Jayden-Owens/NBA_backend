@@ -3,6 +3,24 @@ import Player from '../models/player.js';
 import LatestStatsDate from "../models/StatsDate.js"
 import Current from '../models/current.js';
 
+const monthNumberToAbbr = (monthNumber) => {
+  const months = [
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
+  ];
+  return months[monthNumber] || 'Invalid month';
+};
+
 const calculatePace = (team) => {
   const {
     FieldGoalsAttempted,
@@ -58,28 +76,31 @@ export async function processPlayerAverageData(email, name, current_season, subs
     //const subscribed = res.locals.subscribed;
     //const subscribed = true;
     //const remainingTrialDays = res.locals.remainingTrialDays;
-    console.log("1");
+    
     const date = new Date();
     const curYear = date.getFullYear();
-    const curMonth = date.getMonth() + 1;
-    const year = current_season;
-    //const formattedDate = `${curYear}-${date.getMonth()}-${String(date.getDate()).padStart(2, '0')}`;
+    const curMonth = date.getMonth();
+    const year = current_season - 1;
+    const formattedDate = `${curYear}-${monthNumberToAbbr(curMonth)}-${String(date.getDate()).padStart(2, '0')}`;
+    console.log(formattedDate);
     //const formattedDate = `${curYear}-${curMonth}-${String(date.getDate()).padStart(2, '0')}`;
-    const formattedDate = `${curMonth}-${String(date.getDate()).padStart(2, '0')}-${curYear}`;
-    const url4 = `https://api.sportsdata.io/v3/nba/projections/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=0224aa9e70ad409b99dd353a27fccdae`;
-
+    //const formattedDate = `${curMonth}-${String(date.getDate()).padStart(2, '0')}-${curYear}`;
+    //const url4 = `https://api.sportsdata.io/v3/nba/projections/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=0224aa9e70ad409b99dd353a27fccdae`;
+    const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}`;
     //scheduled match for tonight with players
-    const url5 = `https://api.sportsdata.io/v3/nba/projections/json/DfsSlatesByDate/${formattedDate}?key=0224aa9e70ad409b99dd353a27fccdae`;
+    //const url5 = `https://api.sportsdata.io/v3/nba/projections/json/DfsSlatesByDate/${formattedDate}?key=0224aa9e70ad409b99dd353a27fccdae`;
+    const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}`;
 
-    const url6 = `https://api.sportsdata.io/v3/nba/scores/json/TeamSeasonStats/${year}?key=0224aa9e70ad409b99dd353a27fccdae`;
+    //const url6 = `https://api.sportsdata.io/v3/nba/scores/json/TeamSeasonStats/${year}?key=0224aa9e70ad409b99dd353a27fccdae`;
+    const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${year}`;
 
-    
+    console.log("1");
     const [response, response5, teamStats] = await Promise.all([
-        axios.get(url4),//, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
-        axios.get(url5), //, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
-        axios.get(url6,) //{ headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
+        axios.get(url4, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
+        axios.get(url5, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
+        axios.get(url6, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
     ]);
-
+    console.log("1");
     if (response.status !== 200 || response5.status !== 200) {
         console.error('Error fetching data from API'+response.status+response5.status);
         throw new Error(`HTTP error! status: ${response.status}`);
