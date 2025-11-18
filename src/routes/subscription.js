@@ -13,7 +13,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
   try {
     const { email, name } = req.body;
-    console.log(process.env.STRIPE_SECRET_KEY)
+    //console.log(process.env.STRIPE_SECRET_KEY)
     // 👉 1️⃣ Check if customer exists in Stripe
     let stripeCustomer = await stripe.customers.list({ email });
     console.log(stripeCustomer);
@@ -25,7 +25,7 @@ router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
         name: name,
       });
     }
-    
+
     // 👉 2️⃣ Check if customer exists in Chargebee
     let chargebeeCustomerResponse = await chargebee.customer.list({ "email[is]": email }).request();
     let chargebeeCustomer;
@@ -39,7 +39,7 @@ router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
       }).request();
       chargebeeCustomer = newChargebeeCustomer.customer;
     }
-    
+
     // 👉 3️⃣ Return response with existing or new customer IDs
     return res.status(200).json({
       success: true,
@@ -47,7 +47,7 @@ router.post('/api/signup', isAuthenticatedUser, async (req, res) => {
       chargebee_id: chargebeeCustomer.id,
       customer_info: { email, name }
     });
-    
+
   } catch (error) {
     console.error("Signup error:", error);
     return res.status(500).json({ success: false, message: error.message });
@@ -59,6 +59,22 @@ router.post('/api/subscription', isAuthenticatedUser, async (req, res) => {
   const { plan_id, customer, paymentMethodId, amount } = req.body;
 
   try {
+    const chargebeeCustomerSubscription = await chargebee.subscription.list({
+      limit: 1,
+      customer_id: { is: customer.chargebee_id }
+    }).request();
+
+    if (chargebeeCustomerSubscription.list.length > 0) {
+      const existingSub = chargebeeCustomerSubscription.list[0].subscription;
+
+      if (existingSub.status === 'active' || existingSub.status === 'in_trial') {
+        console.log('Customer already has an active subscription.');
+        return res.status(400).json({
+          error: 'Customer already has an active subscription.'
+        });
+      }
+    }
+
     const paymentMethod = await stripe.paymentMethods.attach(
       paymentMethodId,
       {
@@ -96,17 +112,17 @@ router.post('/api/subscription', isAuthenticatedUser, async (req, res) => {
       })
       .request();
 
-      const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.id);
 
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-  
-      user.trialStartDate = new Date();
-      user.trialExpired = true;
-      user.isSubscribed = true;
-  
-      await user.save();
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.trialStartDate = new Date();
+    user.trialExpired = true;
+    user.isSubscribed = true;
+
+    await user.save();
 
     return res
       .status(200)
@@ -136,7 +152,7 @@ router.post('/api/cancel-subscription', isAuthenticatedUser, async (req, res) =>
       return res.status(404).json({ error: 'User not found' });
     }
 
-    user.trialExpired = true; 
+    user.trialExpired = true;
     await user.save();
 
     return res.status(200).json({ success: true, message: 'Subscription cancelled successfully' });
@@ -168,7 +184,7 @@ router.post(
         // Update user subscription status
         const customer = event.content.customer;
         const user = await User.findOne({ email: customer.email });
-        
+
         if (user) {
           user.isSubscribed = true;
           user.trialExpired = true;
@@ -177,14 +193,14 @@ router.post(
         }
       } else if (event.event_type === 'payment_intent.succeeded') {
         console.log('Payment succeeded:', event.content.payment_intent);
-        
+
         // Get the customer and subscription details from the payment intent
         const paymentIntent = event.content.payment_intent;
         const customer = await stripe.customers.retrieve(paymentIntent.customer);
-        
+
         // Find the user
         const user = await User.findOne({ email: customer.email });
-        
+
         if (user) {
           // Create subscription in Chargebee
           const subscription = await chargebee.subscription
@@ -206,7 +222,7 @@ router.post(
           user.isSubscribed = true;
           user.trialExpired = true;
           await user.save();
-          
+
           console.log('Created subscription and updated user status:', user.email);
         }
       }

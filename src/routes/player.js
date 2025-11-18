@@ -173,23 +173,35 @@ router.post(
     const remainingTrialDays = res.locals.remainingTrialDays;
 
     try {
-      // const chargebeeCustomerResponse = await chargebee.customer.list({ email: { is: email } }).request();
+      const chargebeeCustomerResponse = await chargebee.customer.list({ email: { is: email } }).request();
 
-      // const chargebeeCustomer = chargebeeCustomerResponse.list.find(c => c.email === email).customer.id;
-      // const chargebeeCustomerSubscription = await chargebee.subscription.list({
-      //   limit: 1,
-      //   customer_id: { is: chargebeeCustomer }
-      // }).request();
-      // console.log("Chargebee Customer:", chargebeeCustomerSubscription.list[0].subscription.status);
-      //console.log(chargebeeCustomerResponse.list[0]);
+      const chargebeeCustomer = chargebeeCustomerResponse.list.find(c => c.email === email).customer.id;
+      const chargebeeCustomerSubscription = await chargebee.subscription.list({
+        limit: 1,
+        customer_id: { is: chargebeeCustomer }
+      }).request();
+      //console.log("Chargebee Customer:", chargebeeCustomerSubscription.list);
+      //console.log(chargebeeCustomerResponse.list[0].customer);
 
-      const job = await playerAverageQueue.add({ email, name, year, subscribed, remainingTrialDays });
 
-      res.send({
-        success: true,
-        message: 'processing started. please check back in a minute.',
-        jobId: job.id,
-      });
+      if (chargebeeCustomerSubscription.list[0].subscription.status === 'in_trial' || chargebeeCustomerSubscription.list[0].subscription.status === 'active') {
+        const job = await playerAverageQueue.add({ email, name, year, subscribed, remainingTrialDays });
+        res.send({
+          success: true,
+          message: 'processing started. please check back in a minute.',
+          jobId: job.id,
+        });
+
+      } 
+      else 
+      {
+        res.send({
+          success: false,
+          message: 'No active subscription found. Please subscribe to access this feature.',
+        });
+      }
+
+
     } catch (error) {
       console.error(error);
       return res.send({ state: error.message });
