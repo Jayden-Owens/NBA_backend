@@ -6,6 +6,7 @@ import Player from '../models/player.js';
 import LatestStatsDate from "../models/StatsDate.js"
 import Current from '../models/current.js';
 import playerAverageQueue from '../queues/playerAvergeQueue.js';
+import { fetchProjectionForPosition } from '../utils/playerAverageProcessor.js';
 //import lastData from './lastSeasonStat.json' with {type: 'json'};
 import { isAuthenticatedUser } from '../middlewares/auth.js';
 import { checkTrialExpiration } from '../middlewares/trial.js';
@@ -166,7 +167,6 @@ router.post(
   isAuthenticatedUser,
   checkTrialExpiration,
   async (req, res) => {
-    console.time('player_average_data');
     const { email, name } = req.body;
     const year = await GetCurrentSeason();
     const subscribed = res.locals.subscribed;
@@ -207,6 +207,56 @@ router.post(
       return res.send({ state: error.message });
     }
   },
+);
+
+router.get(
+  '/player_average_stream',
+  isAuthenticatedUser,
+  checkTrialExpiration,
+  async (req, res) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive'
+    });
+
+    const { email, name } = req.query; // use query params for GET
+    const year = await GetCurrentSeason();
+    const subscribed = res.locals.subscribed;
+    const remainingTrialDays = res.locals.remainingTrialDays;
+
+    try {
+      const chargebeeCustomerResponse = await chargebee.customer.list({ email: { is: email } }).request();
+      const chargebeeCustomer = chargebeeCustomerResponse.list.find(c => c.email === email).customer.id;
+      const chargebeeCustomerSubscription = await chargebee.subscription.list({
+        limit: 1,
+        customer_id: { is: chargebeeCustomer }
+      }).request();
+
+      if (
+        chargebeeCustomerSubscription.list[0].subscription.status === 'in_trial' ||
+        chargebeeCustomerSubscription.list[0].subscription.status === 'active'
+      ) {
+        // Instead of queueing, process positions directly and stream them
+        const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
+
+        for (const pos of positions) {
+          const data = await fetchProjectionForPosition(pos, { email, name, year, subscribed, remainingTrialDays });
+          res.write(`data: ${JSON.stringify({ position: pos, data })}\n\n`);
+        }
+
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+        res.end();
+      } else {
+        res.write(`data: ${JSON.stringify({ error: 'No active subscription found.' })}\n\n`);
+        res.end();
+      }
+    } catch (error) {
+      console.error(error);
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+      res.end();
+    }
+  }
 );
 
 router.post('/pace', async (req, res) => {

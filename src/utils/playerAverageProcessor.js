@@ -2,6 +2,7 @@ import axios from 'axios';
 import Player from '../models/player.js';
 import LatestStatsDate from "../models/StatsDate.js"
 import Current from '../models/current.js';
+import { calculateProjection } from './calculateProjection.js';
 
 const monthNumberToAbbr = (monthNumber) => {
   const months = [
@@ -21,77 +22,22 @@ const monthNumberToAbbr = (monthNumber) => {
   return months[monthNumber] || 'Invalid month';
 };
 
-const calculatePace = (team) => {
-  const {
-    FieldGoalsAttempted,
-    FreeThrowsAttempted,
-    OffensiveRebounds,
-    Turnovers,
-    Games,
-  } = team;
-  return (
-    (FieldGoalsAttempted +
-      0.44 * FreeThrowsAttempted -
-      OffensiveRebounds +
-      Turnovers) /
-    2 /
-    Games
-  );
-};
 
-const calculatePaceAdjustedProjection = (player, teamStats) => {
-  const playerTeamStats = teamStats.find(
-    (team) => team.Team === player.Team,
-  );
-  const opponentTeamStats = teamStats.find(
-    (team) => team.Team === player.Opponent,
-  );
-
-  if (!playerTeamStats || !opponentTeamStats)
-    return player.ProjectedFantasyPoints;
-
-  const playerTeamPace = +calculatePace(playerTeamStats);
-  const opponentTeamPace = +calculatePace(opponentTeamStats);
-
-  const avgPace = (playerTeamPace + opponentTeamPace) / 2;
-  const paceDifferential = +avgPace - playerTeamPace;
-  const extraPossessionsPerMinute = +paceDifferential / 48;
-  const extraPossessions =
-    +extraPossessionsPerMinute * +player.ProjectedMinutes;
-
-  let paceAdjustedFantasyPoints =
-    +player.ProjectedFantasyPoints +
-    +extraPossessions * (+player.AvgFPPM / 2.125);
-
-  paceAdjustedFantasyPoints = isNaN(paceAdjustedFantasyPoints)
-    ? 0.0
-    : paceAdjustedFantasyPoints;
-
-  return paceAdjustedFantasyPoints.toFixed(3);
-};
 
 export async function processPlayerAverageData(email, name, current_season, subscribed, remainingTrialDays) {
     console.log('started processing for');
-    //trial check
-    //const subscribed = res.locals.subscribed;
-    //const subscribed = true;
-    //const remainingTrialDays = res.locals.remainingTrialDays;
+    
     
     const date = new Date();
     const curYear = date.getFullYear();
     const curMonth = date.getMonth();
     const year = current_season - 1;
     const formattedDate = `${curYear}-${monthNumberToAbbr(curMonth)}-${String(date.getDate()).padStart(2, '0')}`;
-    console.log(formattedDate);
-    //const formattedDate = `${curYear}-${curMonth}-${String(date.getDate()).padStart(2, '0')}`;
-    //const formattedDate = `${curMonth}-${String(date.getDate()).padStart(2, '0')}-${curYear}`;
-    //const url4 = `https://api.sportsdata.io/v3/nba/projections/json/PlayerGameProjectionStatsByDate/${formattedDate}?key=0224aa9e70ad409b99dd353a27fccdae`;
+    
     const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}`;
-    //scheduled match for tonight with players
-    //const url5 = `https://api.sportsdata.io/v3/nba/projections/json/DfsSlatesByDate/${formattedDate}?key=0224aa9e70ad409b99dd353a27fccdae`;
+   
     const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}`;
 
-    //const url6 = `https://api.sportsdata.io/v3/nba/scores/json/TeamSeasonStats/${year}?key=0224aa9e70ad409b99dd353a27fccdae`;
     const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${year}`;
 
     
@@ -107,16 +53,6 @@ export async function processPlayerAverageData(email, name, current_season, subs
         throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    // const playerMetaMap = new Map();
-    // response5.data.forEach(slate => {
-    //     slate.DfsSlatePlayers.forEach(player => {
-    //         playerMetaMap.set(player.PlayerID, {
-    //             salary: player.OperatorSalary,
-    //             position: player.OperatorPosition
-    //         });
-    //     });
-    // });
-    console.log('new');
     const playerMetaMap = new Map();
     slateData.forEach(slate => {
         slate.DfsSlatePlayers.forEach(player => {
@@ -221,3 +157,51 @@ export async function processPlayerAverageData(email, name, current_season, subs
     return [players, subscribed, remainingTrialDays];
 }
 
+export async function fetchProjectionForPosition(
+  position,
+  { email, name, year, subscribed, remainingTrialDays }
+) {
+  const date = new Date();
+  const curYear = date.getFullYear();
+  const curMonth = date.getMonth();
+  const formattedDate = `${curYear}-${monthNumberToAbbr(curMonth)}-${String(date.getDate()).padStart(2, '0')}`;
+
+  const url4 = `https://api.sportsdata.io/api/nba/fantasy/json/PlayerGameProjectionStatsByDate/${formattedDate}`;
+  const url5 = `https://api.sportsdata.io/api/nba/fantasy/json/DfsSlatesByDate/${formattedDate}`;
+  const url6 = `https://api.sportsdata.io/api/nba/odds/json/TeamSeasonStats/${year}`;
+
+  const [response, response5, teamStats] = await Promise.all([
+    axios.get(url4, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
+    axios.get(url5, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
+    axios.get(url6, { headers: { 'Ocp-Apim-Subscription-Key': process.env.API_KEY } }),
+  ]);
+
+  // Build meta map for salaries/positions
+  const slateData = response5.data.filter(
+    slate => slate.OperatorGameType === 'Classic' && slate.Operator === 'DraftKings'
+  );
+  const playerMetaMap = new Map();
+  slateData.forEach(slate => {
+    slate.DfsSlatePlayers.forEach(player => {
+      playerMetaMap.set(player.PlayerID, {
+        salary: player.OperatorSalary,
+        position: player.OperatorPosition
+      });
+    });
+  });
+
+  // Filter players for this position
+  const playersForPos = response.data.filter(
+    d => playerMetaMap.get(d.PlayerID)?.position === position
+  );
+
+  let ID = 0;
+  const group = [];
+
+  for (const data of playersForPos) {
+    const player = await calculateProjection(data, playerMetaMap, teamStats.data, ++ID);
+    group.push(player);
+  }
+
+  return group;
+}
