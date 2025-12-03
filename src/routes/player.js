@@ -232,7 +232,7 @@ router.get(
         limit: 1,
         customer_id: { is: chargebeeCustomer }
       }).request();
-      console.log("Chargebee Customer Subscription: ", chargebeeCustomerSubscription.list[0].subscription.status);
+      console.log("Chargebee Customer Subscription: ", chargebeeCustomerSubscription.list);
       if (
         chargebeeCustomerSubscription.list.length > 0 &&(
         chargebeeCustomerSubscription.list[0].subscription.status === 'in_trial' ||
