@@ -234,8 +234,9 @@ router.get(
       }).request();
 
       if (
+        chargebeeCustomerSubscription.list.length > 0 &&(
         chargebeeCustomerSubscription.list[0].subscription.status === 'in_trial' ||
-        chargebeeCustomerSubscription.list[0].subscription.status === 'active'
+        chargebeeCustomerSubscription.list[0].subscription.status === 'active')
       ) {
         // Instead of queueing, process positions directly and stream them
         const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
