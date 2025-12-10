@@ -209,7 +209,7 @@ router.post(
   },
 );
 
-router.post(
+router.get(
   '/player_average_stream',
   isAuthenticatedUser,
   checkTrialExpiration,
