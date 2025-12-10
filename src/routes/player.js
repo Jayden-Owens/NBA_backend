@@ -209,7 +209,7 @@ router.post(
   },
 );
 
-router.post(
+router.get(
   '/player_average_stream',
   isAuthenticatedUser,
   checkTrialExpiration,
@@ -220,11 +220,11 @@ router.post(
       Connection: 'keep-alive'
     });
 
-    const { email, name } = req.body; // use query params for GET
+    const { email, name } = req.user; 
     const year = await GetCurrentSeason();
     const subscribed = res.locals.subscribed;
     const remainingTrialDays = res.locals.remainingTrialDays;
-    console.log(email);
+    console.log(req.user);
     try {
       const chargebeeCustomerResponse = await chargebee.customer.list({ email: { is: email } }).request();
       const chargebeeCustomer = chargebeeCustomerResponse.list.find(c => c.email === email).customer.id;
