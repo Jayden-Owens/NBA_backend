@@ -224,7 +224,7 @@ router.get(
     const year = await GetCurrentSeason();
     const subscribed = res.locals.subscribed;
     const remainingTrialDays = res.locals.remainingTrialDays;
-
+    console.log(email);
     try {
       const chargebeeCustomerResponse = await chargebee.customer.list({ email: { is: email } }).request();
       const chargebeeCustomer = chargebeeCustomerResponse.list.find(c => c.email === email).customer.id;
