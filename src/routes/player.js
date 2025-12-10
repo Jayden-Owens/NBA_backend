@@ -209,7 +209,7 @@ router.post(
   },
 );
 
-router.get(
+router.post(
   '/player_average_stream',
   isAuthenticatedUser,
   checkTrialExpiration,
@@ -220,7 +220,7 @@ router.get(
       Connection: 'keep-alive'
     });
 
-    const { email, name } = req.query; // use query params for GET
+    const { email, name } = req.body; // use query params for GET
     const year = await GetCurrentSeason();
     const subscribed = res.locals.subscribed;
     const remainingTrialDays = res.locals.remainingTrialDays;
