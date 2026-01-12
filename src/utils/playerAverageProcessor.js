@@ -128,7 +128,7 @@ export async function processPlayerAverageData(email, name, current_season, subs
         const player = {
             ID: ++ID,
             Name: data.Name,
-            Position,
+            Position: data.Position.split('/'),
             Team: data.Team,
             Opponent: data.Opponent,
             ProjectedMinutes: ProjectedMinutes.toFixed(3),
@@ -185,14 +185,14 @@ export async function fetchProjectionForPosition(
     slate.DfsSlatePlayers.forEach(player => {
       playerMetaMap.set(player.PlayerID, {
         salary: player.OperatorSalary,
-        position: player.OperatorPosition
+        position: player.OperatorPosition.split('/'), // Take first position if multiple
       });
     });
   });
 
   // Filter players for this position
   const playersForPos = response.data.filter(
-    d => playerMetaMap.get(d.PlayerID)?.position === position
+    d => playerMetaMap.get(d.PlayerID)?.position.includes(position)
   );
 
   let ID = 0;

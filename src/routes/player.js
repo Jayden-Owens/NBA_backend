@@ -227,14 +227,11 @@ router.get(
     console.log(email);
     try {
       const chargebeeCustomerResponse = await chargebee.customer.list({ email: { is: email } }).request();
-      console.log("Chargebee Customer Response:", chargebeeCustomerResponse.list[0].customer.id);
-      const chargebeeCustomer = chargebeeCustomerResponse.list[0].customer.id;//chargebeeCustomerResponse.list.find(c => c.email === email).customer.id;
+      const chargebeeCustomer = chargebeeCustomerResponse.list[0].customer.id;
       const chargebeeCustomerSubscription = await chargebee.subscription.list({
         limit: 1,
         customer_id: { is: chargebeeCustomer }
       }).request();
-      console.log("Chargebee Customer:", chargebeeCustomer);
-      console.log("Chargebee Customer Subscription: ", chargebeeCustomerSubscription);
       if (
         chargebeeCustomerSubscription.list.length > 0 &&(
         chargebeeCustomerSubscription.list[0].subscription.status === 'in_trial' ||
